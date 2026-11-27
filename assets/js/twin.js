@@ -46,31 +46,32 @@
     };
   }
 
-  /* ---------- material helpers (brushed steel under a top-left key light) ---------- */
+  /* ---------- material helpers (brushed steel under a top-left key light) ----------
+     LIGHT selects the Stone studio: brushed aluminium on warm ceramic, dark-steel flow. */
+  var LIGHT = false;
+  function L(dark, light) { return LIGHT ? light : dark; }
+  function stops(g, list) { list.forEach(function (s) { g.addColorStop(s[0], s[1]); }); return g; }
   function steelV(c, y0, y1) {   // horizontal cylinder / pipe shell
-    var g = c.createLinearGradient(0, y0, 0, y1);
-    g.addColorStop(0, '#24272D'); g.addColorStop(0.16, '#6E747E'); g.addColorStop(0.3, '#B4B9C0');
-    g.addColorStop(0.42, '#7A8089'); g.addColorStop(0.7, '#3A3E45'); g.addColorStop(1, '#16181C');
-    return g;
+    return stops(c.createLinearGradient(0, y0, 0, y1), LIGHT
+      ? [[0, '#6B7079'], [0.16, '#B7BBC2'], [0.3, '#F3F4F6'], [0.42, '#C6CAD0'], [0.7, '#8F949C'], [1, '#5E636B']]
+      : [[0, '#24272D'], [0.16, '#6E747E'], [0.3, '#B4B9C0'], [0.42, '#7A8089'], [0.7, '#3A3E45'], [1, '#16181C']]);
   }
   function steelR(c, x, y, r) {  // disc / casing, specular offset toward the light
-    var g = c.createRadialGradient(x - r * 0.42, y - r * 0.5, r * 0.05, x, y, r * 1.08);
-    g.addColorStop(0, '#C3C7CD'); g.addColorStop(0.22, '#8A9099'); g.addColorStop(0.55, '#4A4F57'); g.addColorStop(0.85, '#262A30'); g.addColorStop(1, '#17191D');
-    return g;
+    return stops(c.createRadialGradient(x - r * 0.42, y - r * 0.5, r * 0.05, x, y, r * 1.08), LIGHT
+      ? [[0, '#F6F7F8'], [0.22, '#CDD1D6'], [0.55, '#9CA2AA'], [0.85, '#737980'], [1, '#596068']]
+      : [[0, '#C3C7CD'], [0.22, '#8A9099'], [0.55, '#4A4F57'], [0.85, '#262A30'], [1, '#17191D']]);
   }
   function cavity(c, x, y, r) {  // wetted interior
-    var g = c.createRadialGradient(x, y, r * 0.1, x, y, r);
-    g.addColorStop(0, '#14171B'); g.addColorStop(1, '#08090B');
-    return g;
+    return stops(c.createRadialGradient(x, y, r * 0.1, x, y, r), LIGHT ? [[0, '#ECEAE4'], [1, '#D9D6CE']] : [[0, '#14171B'], [1, '#08090B']]);
   }
-  function shadowOn(c, blur, oy) { c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = blur; c.shadowOffsetX = 0; c.shadowOffsetY = oy; }
+  function shadowOn(c, blur, oy) { c.shadowColor = L('rgba(0,0,0,.6)', 'rgba(70,62,48,.26)'); c.shadowBlur = blur; c.shadowOffsetX = 0; c.shadowOffsetY = oy; }
   function shadowOff(c) { c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0; }
   function rrect(c, x, y, w, h, r) {
     c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
     c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
   }
   function brushed(c, x0, y0, w, h, vertical) {   // faint machining lines
-    c.save(); c.globalAlpha = 0.06; c.strokeStyle = '#FFFFFF'; c.lineWidth = 0.6;
+    c.save(); c.globalAlpha = 0.06; c.strokeStyle = L('#FFFFFF', '#111214'); c.lineWidth = 0.6;
     for (var i = 0; i < (vertical ? w : h); i += 3) {
       c.beginPath();
       if (vertical) { c.moveTo(x0 + i, y0); c.lineTo(x0 + i, y0 + h); } else { c.moveTo(x0, y0 + i); c.lineTo(x0 + w, y0 + i); }
@@ -90,7 +91,8 @@
     var D_Y = P.y - (VIN + VOUT1) / 2, THROAT = (VOUT1 - VIN) / 2;
     var SX1 = P.x - VOUT1 - RIM - 6;            // suction flange x
     var tgt = null, cur = null, phi = 0, t = 0, parts = [], rings = [];
-    var layer = document.createElement('canvas'), lctx = layer.getContext('2d'), layerKey = '';
+    var layer = document.createElement('canvas'), lctx = layer.getContext('2d'), layerKey = '', light = !!(opts && opts.light);
+    var HL = function (a) { return L('rgba(255,255,255,' + a + ')', 'rgba(17,18,20,' + (a * 0.9).toFixed(3) + ')'); };
 
     function vout(a) { return VOUT0 + (VOUT1 - VOUT0) * (a / TAU); }
     function vols(r0) {   // spiral path from the cutwater (top) clockwise, radius offset r0
@@ -104,12 +106,12 @@
       c.clearRect(-10, -10, W + 20, H + 20);
       // studio backdrop
       var bg = c.createRadialGradient(300, 70, 20, 420, 230, 720);
-      bg.addColorStop(0, '#1A1D22'); bg.addColorStop(0.45, '#121418'); bg.addColorStop(1, '#0C0D10');
+      stops(bg, LIGHT ? [[0, '#FBFAF7'], [0.45, '#F4F2ED'], [1, '#EAE7E0']] : [[0, '#1A1D22'], [0.45, '#121418'], [1, '#0C0D10']]);
       c.fillStyle = bg; c.fillRect(0, 0, W, H);
-      var floor = c.createLinearGradient(0, H * 0.72, 0, H); floor.addColorStop(0, 'rgba(255,255,255,0)'); floor.addColorStop(1, 'rgba(255,255,255,.025)');
+      var floor = c.createLinearGradient(0, H * 0.72, 0, H); floor.addColorStop(0, L('rgba(255,255,255,0)', 'rgba(17,18,20,0)')); floor.addColorStop(1, L('rgba(255,255,255,.025)', 'rgba(17,18,20,.035)'));
       c.fillStyle = floor; c.fillRect(0, H * 0.72, W, H * 0.28);
       // contact shadows
-      c.save(); c.filter = 'blur(14px)'; c.fillStyle = 'rgba(0,0,0,.55)';
+      c.save(); c.filter = 'blur(14px)'; c.fillStyle = L('rgba(0,0,0,.55)', 'rgba(70,62,48,.22)');
       c.beginPath(); c.ellipse(P.x, P.y + VOUT1 + RIM + 18, 170, 16, 0, 0, TAU); c.fill();
       c.beginPath(); c.ellipse(765, P.y + 78, 150, 12, 0, 0, TAU); c.fill();
       c.beginPath(); c.ellipse(930, P.y + 82, 60, 10, 0, 0, TAU); c.fill();
@@ -119,7 +121,7 @@
       var t = 8;
       shadowOn(c, 18, 8); c.fillStyle = steelV(c, P.y - hs - t, P.y + hs + t); c.fillRect(30, P.y - hs - t, SX1 - 30, (hs + t) * 2); shadowOff(c);
       c.fillStyle = cavity(c, (30 + SX1) / 2, P.y, hs * 3); c.fillRect(30, P.y - hs, SX1 - 30, hs * 2);
-      c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 1;
+      c.strokeStyle = HL(.14); c.lineWidth = 1;
       c.beginPath(); c.moveTo(30, P.y - hs + 0.5); c.lineTo(SX1, P.y - hs + 0.5); c.moveTo(30, P.y + hs - 0.5); c.lineTo(SX1, P.y + hs - 0.5); c.stroke();
       c.fillStyle = steelV(c, P.y - hs - t - 10, P.y + hs + t + 10); rrect(c, 26, P.y - hs - t - 10, 8, (hs + t + 10) * 2, 2); c.fill();
       c.fillStyle = steelV(c, P.y - hs - t - 12, P.y + hs + t + 12); rrect(c, SX1 - 4, P.y - hs - t - 12, 10, (hs + t + 12) * 2, 2); c.fill();
@@ -132,19 +134,19 @@
       c.fillStyle = steelV(c, P.y - 60, P.y + 60); rrect(c, 676, P.y - 60, 176, 120, 14); c.fill();
       shadowOff(c);
       for (var fx = 690; fx < 840; fx += 9) {   // cooling fins
-        c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(fx, P.y - 54, 3, 108);
-        c.fillStyle = 'rgba(255,255,255,.06)'; c.fillRect(fx + 3, P.y - 54, 1, 108);
+        c.fillStyle = L('rgba(0,0,0,.28)', 'rgba(40,44,52,.2)'); c.fillRect(fx, P.y - 54, 3, 108);
+        c.fillStyle = L('rgba(255,255,255,.06)', 'rgba(255,255,255,.55)'); c.fillRect(fx + 3, P.y - 54, 1, 108);
       }
       c.fillStyle = steelV(c, P.y - 50, P.y + 50);
       c.beginPath(); c.moveTo(852, P.y - 50); c.lineTo(876, P.y - 38); c.lineTo(876, P.y + 38); c.lineTo(852, P.y + 50); c.closePath(); c.fill();
       // VFD cabinet: graphite with glass display (load bar is dynamic)
       shadowOn(c, 22, 10);
-      var cab = c.createLinearGradient(892, 0, 972, 0); cab.addColorStop(0, '#24272D'); cab.addColorStop(0.5, '#2E3238'); cab.addColorStop(1, '#1B1D22');
+      var cab = c.createLinearGradient(892, 0, 972, 0); stops(cab, LIGHT ? [[0, '#DEDBD4'], [0.5, '#F3F1EC'], [1, '#D2CFC7']] : [[0, '#24272D'], [0.5, '#2E3238'], [1, '#1B1D22']]);
       c.fillStyle = cab; rrect(c, 892, P.y - 66, 80, 132, 10); c.fill(); shadowOff(c);
-      c.strokeStyle = 'rgba(255,255,255,.08)'; c.lineWidth = 1; rrect(c, 892.5, P.y - 65.5, 79, 131, 10); c.stroke();
-      c.fillStyle = '#0B0C0E'; rrect(c, 902, P.y - 54, 60, 34, 5); c.fill();
-      c.strokeStyle = 'rgba(255,255,255,.1)'; rrect(c, 902.5, P.y - 53.5, 59, 33, 5); c.stroke();
-      c.fillStyle = 'rgba(255,255,255,.05)'; for (var vl = 0; vl < 5; vl++) c.fillRect(904, P.y + 8 + vl * 8, 56, 2);
+      c.strokeStyle = HL(.08); c.lineWidth = 1; rrect(c, 892.5, P.y - 65.5, 79, 131, 10); c.stroke();
+      c.fillStyle = L('#0B0C0E', '#23262C'); rrect(c, 902, P.y - 54, 60, 34, 5); c.fill();
+      c.strokeStyle = HL(.1); rrect(c, 902.5, P.y - 53.5, 59, 33, 5); c.stroke();
+      c.fillStyle = HL(.05); for (var vl = 0; vl < 5; vl++) c.fillRect(904, P.y + 8 + vl * 8, 56, 2);
       c.strokeStyle = 'rgba(155,156,163,.35)'; c.setLineDash([3, 4]); c.beginPath(); c.moveTo(876, P.y); c.lineTo(892, P.y); c.stroke(); c.setLineDash([]);
 
       // discharge pipe shell
@@ -162,25 +164,25 @@
       c.beginPath(); outer.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); });
       c.lineTo(P.x + 6, D_Y - THROAT - t); c.lineTo(P.x - 20, P.y - VOUT0 - RIM); c.closePath();
       c.fillStyle = steelR(c, P.x, P.y, VOUT1 + RIM); c.fill(); shadowOff(c);
-      c.save(); c.clip(); c.globalAlpha = 0.05; c.strokeStyle = '#fff'; c.lineWidth = 0.6;
+      c.save(); c.clip(); c.globalAlpha = 0.05; c.strokeStyle = L('#fff', '#111214'); c.lineWidth = 0.6;
       for (var br = VIN; br < VOUT1 + RIM; br += 3) { c.beginPath(); c.arc(P.x, P.y, br, 0, TAU); c.stroke(); }
       c.restore();
       c.beginPath(); inner.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); });
       c.lineTo(P.x + 4, D_Y - THROAT); c.lineTo(P.x - 18, P.y - VOUT0); c.closePath();
       c.fillStyle = cavity(c, P.x, P.y, VOUT1); c.fill();
       c.beginPath(); inner.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); });
-      c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1; c.stroke();
+      c.strokeStyle = HL(.16); c.lineWidth = 1; c.stroke();
       // discharge wetted channel (drawn after the volute so the throat is continuous)
       c.fillStyle = cavity(c, (dx0 + W) / 2, D_Y, 300);
       c.beginPath(); c.moveTo(dx0 - 4, D_Y - THROAT); c.lineTo(taper, D_Y - hd); c.lineTo(W - 30, D_Y - hd); c.lineTo(W - 30, D_Y + hd); c.lineTo(taper, D_Y + hd); c.lineTo(dx0 - 4, D_Y + THROAT); c.closePath(); c.fill();
-      c.strokeStyle = 'rgba(255,255,255,.14)';
+      c.strokeStyle = HL(.14);
       c.beginPath(); c.moveTo(dx0, D_Y - THROAT + 0.5); c.lineTo(taper, D_Y - hd + 0.5); c.lineTo(W - 30, D_Y - hd + 0.5);
       c.moveTo(dx0, D_Y + THROAT - 0.5); c.lineTo(taper, D_Y + hd - 0.5); c.lineTo(W - 30, D_Y + hd - 0.5); c.stroke();
       // back plate seat around the impeller
-      c.beginPath(); c.arc(P.x, P.y, VIN, 0, TAU); c.strokeStyle = 'rgba(255,255,255,.08)'; c.stroke();
+      c.beginPath(); c.arc(P.x, P.y, VIN, 0, TAU); c.strokeStyle = HL(.08); c.stroke();
     }
     function ensureLayer() {
-      var key = cvs.cv.width + 'x' + cvs.cv.height + ':' + Math.round(cur.hs) + ':' + Math.round(cur.hd);
+      var key = cvs.cv.width + 'x' + cvs.cv.height + ':' + Math.round(cur.hs) + ':' + Math.round(cur.hd) + ':' + (light ? 'L' : 'D');
       if (key === layerKey) return;
       layer.width = cvs.cv.width; layer.height = cvs.cv.height;
       cvs.apply(lctx); drawStatic(lctx, cur.hs, cur.hd); layerKey = key;
@@ -190,7 +192,7 @@
     function drawImpeller(c) {
       c.save();
       c.beginPath(); c.arc(P.x, P.y, R2 + 4, 0, TAU); c.fillStyle = steelR(c, P.x, P.y, R2 + 4); c.fill();
-      c.beginPath(); c.arc(P.x, P.y, R2 - 2, 0, TAU); c.fillStyle = 'rgba(8,9,11,.82)'; c.fill();
+      c.beginPath(); c.arc(P.x, P.y, R2 - 2, 0, TAU); c.fillStyle = L('rgba(8,9,11,.82)', 'rgba(226,223,216,.92)'); c.fill();
       var beta = 25 * Math.PI / 180;
       for (var k = 0; k < 6; k++) {
         var th0 = phi + k * TAU / 6, a = [], b = [];
@@ -205,7 +207,7 @@
         c.closePath();
         var mid = a[8], vg = c.createLinearGradient(mid[0] - 30, mid[1] - 30, mid[0] + 30, mid[1] + 30);
         vg.addColorStop(0, '#C9CDD3'); vg.addColorStop(0.5, '#8A9099'); vg.addColorStop(1, '#3E434A');
-        c.fillStyle = vg; c.fill(); c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 0.8; c.stroke();
+        c.fillStyle = vg; c.fill(); c.strokeStyle = L('rgba(0,0,0,.45)', 'rgba(40,44,52,.55)'); c.lineWidth = 0.8; c.stroke();
       }
       // fixed key light sweeping across the rotating vanes
       var sp = c.createRadialGradient(P.x - 30, P.y - 40, 4, P.x - 10, P.y - 20, R2 + 10);
@@ -213,9 +215,9 @@
       c.beginPath(); c.arc(P.x, P.y, R2 + 4, 0, TAU); c.fillStyle = sp; c.fill();
       // eye, hub, bore
       c.beginPath(); c.arc(P.x, P.y, EYE, 0, TAU); c.fillStyle = cavity(c, P.x, P.y, EYE); c.fill();
-      c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 1; c.stroke();
+      c.strokeStyle = HL(.18); c.lineWidth = 1; c.stroke();
       c.beginPath(); c.arc(P.x, P.y, 12, 0, TAU); c.fillStyle = steelR(c, P.x, P.y, 12); c.fill();
-      c.beginPath(); c.arc(P.x, P.y, 4.5, 0, TAU); c.fillStyle = '#0A0B0D'; c.fill();
+      c.beginPath(); c.arc(P.x, P.y, 4.5, 0, TAU); c.fillStyle = L('#0A0B0D', '#2A2E35'); c.fill();
       c.restore();
     }
 
@@ -272,7 +274,8 @@
         var vis = 1, fade = Math.min(1, parts[i].life / 14);
         for (var k = 1; k < n; k++) {
           var f = k / (n - 1);
-          c.strokeStyle = 'rgba(236,235,230,' + (0.62 * f * vis * fade).toFixed(3) + ')';
+          var al = 0.62 * f * vis * fade;
+          c.strokeStyle = !LIGHT ? 'rgba(236,235,230,' + al.toFixed(3) + ')' : i % 5 === 0 ? 'rgba(224,70,25,' + (al * 1.05).toFixed(3) + ')' : 'rgba(46,51,60,' + (al * 1.1).toFixed(3) + ')';
           c.lineWidth = 0.4 + 1.7 * f;
           c.beginPath(); c.moveTo(tr[(k - 1) * 2], tr[(k - 1) * 2 + 1]); c.lineTo(tr[k * 2], tr[k * 2 + 1]); c.stroke();
         }
@@ -298,7 +301,7 @@
     function drawDynamicDrive(c) {
       // VFD load bar + status lamp, motor fan glint
       var lb = clamp(cur.load, 0, 1);
-      c.fillStyle = 'rgba(255,255,255,.06)'; rrect(c, 908, P.y - 41, 48, 6, 3); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.08)'; rrect(c, 908, P.y - 41, 48, 6, 3); c.fill();
       var lg = c.createLinearGradient(908, 0, 956, 0); lg.addColorStop(0, '#9B9CA3'); lg.addColorStop(1, '#ECEBE6');
       c.fillStyle = cur.load > 1 ? VERM : lg; rrect(c, 908, P.y - 41, Math.max(6, 48 * lb), 6, 3); c.fill();
       c.beginPath(); c.arc(956, P.y + 52, 2.5, 0, TAU); c.fillStyle = cur.load > 1 ? VERM : 'rgba(236,235,230,.55)'; c.fill();
@@ -309,6 +312,7 @@
 
     function draw() {
       if (!cur || !tgt) return;
+      LIGHT = light;
       ensureLayer();
       cvs.clear();
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(layer, 0, 0); ctx.restore();
@@ -338,6 +342,7 @@
     api.update = update;
     api.resize = function () { if (cvs.resize()) { layerKey = ''; draw(); } };
     api.bubbles = function () { return rings.length; };
+    api.setTheme = function (isLight) { if (light === !!isLight) return; light = !!isLight; layerKey = ''; if (cur && tgt && (cvs.cssW || cvs.resize())) draw(); };
     if (window.ResizeObserver) new ResizeObserver(function () { api.resize(); }).observe(cv);
     return api;
   }
@@ -350,7 +355,7 @@
     function draw() {
       cvs.clear();
       ctx.beginPath(); ctx.arc(50, 50, 46, 0, TAU); ctx.fillStyle = steelR(ctx, 50, 50, 46); ctx.fill();
-      ctx.beginPath(); ctx.arc(50, 50, 40, 0, TAU); ctx.fillStyle = '#0B0C0E'; ctx.fill();
+      LIGHT = false; ctx.beginPath(); ctx.arc(50, 50, 40, 0, TAU); ctx.fillStyle = '#0B0C0E'; ctx.fill();
       var beta = 25 * Math.PI / 180;
       for (var k = 0; k < 6; k++) {
         var th0 = phi + k * TAU / 6;

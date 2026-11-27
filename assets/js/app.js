@@ -146,7 +146,6 @@
       return '<li><button type="button" class="proj__item' + (q.id === ws.active ? ' is-active' : '') + '" data-pid="' + q.id + '">' +
         '<span class="proj__iname">' + esc(q.name) + '</span><span class="proj__meta mono">' + esc(q.state.project.tag) + ' · ' + fmtDate(q.updated) + '</span></button></li>';
     }).join('');
-    $('#caseTag').textContent = p.template && TEMPLATES[p.template] ? 'Illustrative' : 'Workspace';
     $('#btnResetTpl').hidden = !(p.template && TEMPLATES[p.template]);
   }
   function setMenu(open) {
@@ -541,7 +540,7 @@
       else { pill.className = 'badge badge--bad'; pill.textContent = 'Non-compliant'; }
       var maj = r.deviations.filter(function (d) { return d.sev === 'major'; });
       var codes = r.deviations.filter(function (d) { return d.sev !== 'commercial'; }).map(function (d) { return d.code; });
-      $('[data-status="' + i + '"]').innerHTML = (i === rec && result.anyCompliant ? '<span class="st st--rec">Recommended</span>' : r.compliant ? '<span class="st">Compliant</span>' : '<span class="st st--bad">Non-compliant</span>') +
+      $('[data-status="' + i + '"]').innerHTML = (i === rec && result.anyCompliant ? '<span class="st st--rec spill spill--rec">Recommended</span>' : r.compliant ? '<span class="st spill spill--ok">Compliant</span>' : '<span class="st st--bad spill spill--bad">Non-compliant</span>') +
         '<span class="st__n">' + (codes.length ? codes.join(' · ') : 'no technical flags') + '</span>';
       var ul = $('[data-dev="' + i + '"]');
       ul.innerHTML = r.deviations.length ? r.deviations.map(function (d) {
@@ -560,7 +559,6 @@
       kpi('CO₂ vs lowest CapEx', (Math.abs(co2d) < 0.05 ? '' : co2d > 0 ? MINUS : '+') + num(Math.abs(co2d), 1) + ' t/yr', 'at ' + state.basis.ef.toFixed(2) + ' kg CO₂/kWh');
     rollRender($('#tbeKpis'), html);
     $('#tbeNpsha').textContent = num(result.npsha.npsha, 2) + ' m';
-    $('#tabHorizon').textContent = n;
   }
   // ΔTCO sign convention used everywhere: negative = cheaper over life than the lowest-CapEx bid.
   function deltaTco(r) { var d = -r.savingsVsCheapest; return Math.round(d) === 0 ? '$0' : money(d, true); }
@@ -568,11 +566,16 @@
     var sv = Math.round(r.savingsVsCheapest);
     return sv > 0 ? 'Saves ' + money(sv) : sv < 0 ? 'Costs ' + money(-sv) + ' more' : '$0';
   }
+  // quiet (i) hint: the context line lives in a hover / focus tooltip, never under the value
+  function tip(s) {
+    if (!s) return '';
+    var plain = String(s).replace(/<[^>]+>/g, '');
+    return '<span class="tip" tabindex="0" aria-label="' + esc(plain) + '"><i aria-hidden="true">i</i><span class="tip__b" aria-hidden="true">' + s + '</span></span>';
+  }
   function kpi(k, v, s, verm, sans) {
     var key = String(k).replace(/<[^>]+>/g, '');
     var vv = sans ? v : (v.indexOf(' <small>') > 0 ? '<span data-roll="' + key + '">' + v.replace(' <small>', '</span> <small>') : '<span data-roll="' + key + '">' + v + '</span>');
-    return '<div class="kpi"><span class="kpi__k">' + k + '</span><span class="kpi__v' + (verm ? ' kpi__v--verm' : '') + (sans ? ' kpi__v--name' : '') + '">' + vv + '</span>' +
-      (s ? '<span class="kpi__s">' + s + '</span>' : '') + '</div>';
+    return '<div class="kpi"><span class="kpi__top"><span class="kpi__k">' + k + '</span>' + tip(s) + '</span><span class="kpi__v' + (verm ? ' kpi__v--verm' : '') + (sans ? ' kpi__v--name' : '') + '">' + vv + '</span></div>';
   }
 
   function renderBars() {
@@ -589,9 +592,8 @@
   }
 
   function renderCase() {
-    var ct = $('#caseTitle');
-    ct.textContent = state.project.tag + ' · ' + dutyLabel();
-    ct.title = state.project.service;
+    var b = $('#projBtn');
+    if (b) b.title = state.project.tag + ' · ' + dutyLabel() + ' · ' + state.duty.horizon + '-yr horizon · ' + state.project.service;
   }
 
   /* ================================================================
@@ -793,33 +795,32 @@
     var slot = $('#slotSelect');
     if (slot && slot.options.length === 3) state.bids.forEach(function (x, i) { slot.options[i].textContent = 'Slot ' + 'ABC'[i] + ' · ' + bidName(i); });
 
-    var aff = st.affinity, line = $('#affinityLine');
-    if (!line) { line = doc.createElement('p'); line.id = 'affinityLine'; line.className = 'affinity mono'; $('#vfdSlider').appendChild(line); }
-    line.textContent = 'Affinity · Q ×' + aff.Q.toFixed(2) + '  H ×' + aff.H.toFixed(2) + '  P ×' + aff.P.toFixed(2);
+    var aff = st.affinity, affTxt = 'Affinity at ' + state.hyd.speed + '% speed · Q ×' + aff.Q.toFixed(2) + ' · H ×' + aff.H.toFixed(2) + ' · P ×' + aff.P.toFixed(2);
 
     if (st.noFlow) {
       rollRender($('#hydReadouts'),
-        card('Operating point', 'No delivery', 'Shutoff ' + num(st.s * st.s * st.H0, 1) + ' m is below the ' + num(state.hyd.zStatic, 1) + ' m static head', 'bad', 'Increase speed') +
-        card('VFD power & savings', '—', '') + card('NPSH safety margin', '—', '') + card('Pipe velocity', '—', ''));
+        card('Operating point', 'No delivery', 'Shutoff ' + num(st.s * st.s * st.H0, 1) + ' m is below the ' + num(state.hyd.zStatic, 1) + ' m static head', 'bad', 'No flow') +
+        card('VFD power & savings', '—', '') + card('NPSH margin', '—', '') + card('Pipe velocity', '—', ''));
       return;
     }
-    var m = st.npshMargin, nState = m >= 1 ? 'SAFE' : m >= 0 ? 'LOW MARGIN' : 'CAVITATION RISK';
+    var m = st.npshMargin, nState = m >= 1 ? 'Safe' : m >= 0 ? 'Low margin' : 'Cavitation risk';
     var vBad = st.vDis > 3.5, sv = st.saveKw;
     rollRender($('#hydReadouts'),
       card('Operating point', num(st.op.Q) + ' m³/h · ' + num(st.op.H, 1) + ' m',
-        num(st.op.Q / d.Q * 100) + '% of rated flow · η ' + num(st.etaOp * 100, 1) + ' %') +
+        num(st.op.Q / d.Q * 100) + '% of rated flow · η ' + num(st.etaOp * 100, 1) + ' % · ' + affTxt) +
       card('VFD power & savings', num(st.Pvfd, 1) + ' kW',
         (sv >= 0 ? 'Saves ' + num(sv, 1) + ' kW vs throttling · ' + money(st.saveUsd) + '/yr · ' + num(st.saveCo2, 1) + ' t CO₂' : 'VFD losses exceed throttling loss here')) +
-      card('NPSH safety margin', (m >= 0 ? '+' : '') + num(m, 2) + ' m',
+      card('NPSH margin', (m >= 0 ? '+' : '') + num(m, 2) + ' m',
         'NPSHa ' + num(st.npsha, 2) + ' m vs NPSHr ' + num(st.npshr, 2) + ' m · min 1.0 m', m < 1 ? 'bad' : 'ok', nState) +
       card('Pipe velocity', num(st.vDis, 2) + ' m/s',
-        'Discharge · suction ' + num(st.vSuc, 2) + ' m/s · limit 3.5 m/s', vBad ? 'bad' : 'ok', vBad ? 'EROSION RISK' : 'WITHIN LIMIT'));
+        'Discharge · suction ' + num(st.vSuc, 2) + ' m/s · limit 3.5 m/s', vBad ? 'bad' : 'neutral', vBad ? 'Erosion risk' : 'Within limit'));
   }
   // Executive readout card: one value, one line of context, optional state badge.
   function card(k, v, sub, tone, badge) {
-    return '<div class="xcard' + (tone === 'bad' ? ' xcard--bad' : '') + '"><div class="xcard__top"><span class="kpi__k">' + k + '</span>' +
-      (badge ? '<span class="state ' + (tone === 'bad' ? 'state--bad' : 'state--ok') + '">' + badge + '</span>' : '') + '</div>' +
-      '<span class="xcard__v mono" data-roll="' + k + '">' + v + '</span>' + (sub ? '<span class="xcard__s">' + sub + '</span>' : '') + '</div>';
+    var pill = tone === 'bad' ? 'spill--bad' : tone === 'neutral' ? 'spill--neutral' : 'spill--ok';
+    return '<div class="xcard' + (tone === 'bad' ? ' xcard--bad' : '') + '"><div class="xcard__top"><span class="kpi__k">' + k + '</span>' + tip(sub) +
+      (badge ? '<span class="spill ' + pill + '">' + badge + '</span>' : '') + '</div>' +
+      '<span class="xcard__v" data-roll="' + k + '">' + v + '</span></div>';
   }
 
 
@@ -849,7 +850,7 @@
     var m = hs.npshMargin;
     var f1 = '<div class="sv sv--hyd"><svg id="storyChart' + sfx + '" class="chart" viewBox="0 0 560 300" role="img" aria-label="Pump curve, system curve and operating point for the sample package"></svg>' +
       '<div class="sv__stats"><div><span class="mono">Operating point</span><b class="mono">' + num(hs.op.Q) + ' m³/h · ' + num(hs.op.H, 1) + ' m</b></div>' +
-      '<div><span class="mono">NPSH margin</span><b class="mono">+' + num(m, 2) + ' m <em class="state state--ok">' + (m >= 1 ? 'SAFE' : 'LOW') + '</em></b></div>' +
+      '<div><span class="mono">NPSH margin</span><b class="mono">+' + num(m, 2) + ' m <em class="spill ' + (m >= 1 ? 'spill--ok' : 'spill--bad') + '">' + (m >= 1 ? 'Safe' : 'Low') + '</em></b></div>' +
       '<div><span class="mono">VFD at ' + st.hyd.speed + '% vs throttle</span><b class="mono">' + money(hs.saveUsd) + ' / yr</b></div></div></div>';
     var rb = st.bids[rec];
     var f2 = '<div class="sv sv--doc"><div class="doc"><span class="doc__mark"></span><span class="doc__title">Award Recommendation</span>' +
@@ -949,6 +950,8 @@
       var act = Math.min(tops.length - 1, Math.round(pos - 0.2 < 0 ? 0 : Math.floor(pos + 0.0001)));
       links.forEach(function (a, k) { a.classList.toggle('is-active', k === act); });
       // never dark-on-dark: flip a label to stone when it sits over an obsidian panel
+      var fr = $('.foot--dark').getBoundingClientRect(), rr = rail.getBoundingClientRect();
+      rail.classList.toggle('is-away', fr.top < rr.bottom + 48);
       var darks = $$('.frame-hero, .stage, .sstep__media, .foot--dark').map(function (d) { return d.getBoundingClientRect(); });
       links.forEach(function (a) {
         var r = a.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
@@ -1003,7 +1006,7 @@
   var pumpTwin = null, miniTwin = null, lastAlert = '';
   function initTwins() {
     if (!window.MyengTwin) return;
-    pumpTwin = window.MyengTwin.pump($('#twinCanvas'), { reduced: reduceMotion });
+    pumpTwin = window.MyengTwin.pump($('#twinCanvas'), { reduced: reduceMotion, light: $('#app').getAttribute('data-theme') === 'stone' });
     miniTwin = window.MyengTwin.mini($('#stripImp'), { reduced: reduceMotion });
     doc.addEventListener('visibilitychange', twinSync);
   }
@@ -1020,7 +1023,7 @@
     var alerts = $('#twinAlerts'), cv = $('#twinCanvas');
     if (st.noFlow) {
       pumpTwin.update({ speed: st.s, flow: 0, vSuc: 0.01, vDis: 0.01, D: h.D, Ds: h.Ds, margin: 9, shaftKw: 0, motorKw: bid.motorKw, erosion: false, rpm: rpm, speedPct: h.speed, H: 0 });
-      alerts.innerHTML = '<span class="talert talert--bad">NO DELIVERY · SHUTOFF BELOW STATIC HEAD</span>'; lastAlert = '';
+      alerts.innerHTML = '<span class="spill spill--bad">No delivery · shutoff below static head</span>'; lastAlert = '';
       cv.setAttribute('aria-label', 'Pump twin: no delivery at ' + h.speed + '% speed.');
       ['#tpFlow', '#tpDis', '#tpNpsh'].forEach(function (id) { $(id).innerHTML = ''; });
       $('#tpSpeed').innerHTML = '<span class="tglass__k">Speed / VFD</span><b>' + num(rpm) + ' rpm · ' + h.speed + '%</b>';
@@ -1031,9 +1034,9 @@
       speed: st.s, flow: st.op.Q, vSuc: st.vSuc, vDis: st.vDis, D: h.D, Ds: h.Ds, margin: st.npshMargin,
       shaftKw: st.PshaftOp, motorKw: bid.motorKw, erosion: ero, rpm: rpm, speedPct: h.speed, H: st.op.H
     });
-    var a = (cav ? '<span class="talert talert--bad">CAVITATION ONSET · EYE ZONE</span>' : '<span class="talert">NPSH SAFE</span>') +
-      (ero ? '<span class="talert talert--bad">EROSION RISK · &gt;3.5 m/s</span>' : '') +
-      '<span class="talert talert--quiet">' + bidNameH(st.bidIndex) + '</span>';
+    var a = (cav ? '<span class="spill spill--bad">Cavitation onset · eye zone</span>' : '<span class="spill spill--ok">NPSH safe</span>') +
+      (ero ? '<span class="spill spill--bad">Erosion risk · &gt;3.5 m/s</span>' : '') +
+      '<span class="spill spill--neutral">' + bidNameH(st.bidIndex) + '</span>';
     if (a !== lastAlert) { alerts.innerHTML = a; lastAlert = a; }
     var pill = function (id, k, v, bad) { var el = $(id); el.innerHTML = '<span class="tglass__k">' + k + '</span><b>' + v + '</b>'; el.classList.toggle('is-alert', !!bad); };
     pill('#tpFlow', 'Flow Q', num(st.op.Q) + ' m³/h');
@@ -1061,13 +1064,14 @@
      Hero stage telemetry + rated / VFD-trim toggle (Package 01 template)
      ================================================================ */
   var heroFlow = 1;   // flow-field speed factor, follows the selected operating point
+  var heroSurge = 0;  // transient boost when the speed trim changes (decays in the flow loop)
   function initHeroStage() {
     var st = clone(SAMPLE), res = E.evaluate(st), rec = res.recommended, r = res.bids[rec];
     $('#heroSave').textContent = money(r.savingsVsCheapest);
     $('#heroNpsh').textContent = (r.npshMargin >= 0 ? '+' : '') + num(r.npshMargin, 1) + ' m';
     var safe = r.npshMargin >= 1;
-    $('#heroNpshState').textContent = safe ? 'SAFE' : 'LOW';
-    $('#heroNpshState').classList.toggle('is-bad', !safe);
+    $('#heroNpshState').textContent = safe ? 'Safe' : 'Low';
+    $('#heroNpshState').className = 'spill ' + (safe ? 'spill--ok' : 'spill--bad');
     function setTrim(pct) {
       var s2 = clone(st); s2.hyd.speed = pct; s2.hyd.vendor = rec;
       var h = E.hydraulicStudy(s2, rec);
@@ -1079,7 +1083,17 @@
       heroFlow = h.op.Q / st.duty.Q;
       $$('[data-trim]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-trim') === String(pct) ? 'true' : 'false'); });
     }
-    $$('[data-trim]').forEach(function (b) { b.addEventListener('click', function () { setTrim(+b.getAttribute('data-trim')); }); });
+    var frame = $('#heroFrame'), surgeT = 0;
+    $$('[data-trim]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var was = b.getAttribute('aria-pressed') === 'true';
+        setTrim(+b.getAttribute('data-trim'));
+        if (was || reduceMotion) return;
+        // a visible response: sheen pulse across the impeller and a short streamline surge
+        frame.classList.remove('is-surge'); void frame.offsetWidth; frame.classList.add('is-surge');
+        heroSurge = 1; clearTimeout(surgeT); surgeT = setTimeout(function () { frame.classList.remove('is-surge'); }, 1100);
+      });
+    });
     setTrim(92);
   }
 
@@ -1410,6 +1424,7 @@
     $$('[data-theme-set]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-theme-set') === t ? 'true' : 'false'); });
     if (persist) { try { window.localStorage.setItem(THEME_KEY, t); } catch (e) { /* storage unavailable */ } }
     if (hqChart && hqChart.cur) hqChart.draw();
+    if (pumpTwin && pumpTwin.setTheme) pumpTwin.setTheme(t === 'stone');
   }
   function initStudioTheme() {
     var t = 'stone';
@@ -1512,6 +1527,20 @@
     window.addEventListener('hashchange', route);
     window.addEventListener('popstate', route);
     $('#btnBack').addEventListener('click', backToSite);
+    $$('[data-home]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (appOpen) {
+          // close the Studio and land on the very top of the site, no hash left behind
+          history.pushState(null, '', location.pathname + location.search);
+          route();
+          window.scrollTo({ top: 0, behavior: 'auto' });
+          return;
+        }
+        if (location.hash) history.replaceState(history.state, '', location.pathname + location.search);
+        window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+      });
+    });
     doc.addEventListener('keydown', function (e) { if (e.key === 'Escape' && appOpen && !$('#modal').open) backToSite(); });
     window.addEventListener('resize', moveInk);
     if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(moveInk);
@@ -1546,6 +1575,7 @@
   var modal, lastFocus;
   function openModal(title, bodyHtml, actions) {
     modal = modal || $('#modal');
+    modal.classList.remove('modal--composer');
     lastFocus = doc.activeElement;
     $('#modalTitle').textContent = title;
     $('#modalBody').innerHTML = bodyHtml;
@@ -1832,21 +1862,37 @@
     ta.remove();
     toast(ok ? 'Copied to clipboard.' : 'Copy failed — select the text and copy manually.');
   }
+  function rfiParts(i) {
+    var lines = rfiText(i).split('\n');
+    return { subject: lines[0].replace(/^Subject:\s*/, ''), body: lines.slice(2).join('\n') };
+  }
+  // Supplier RFI: a composer with To / Vendor / Subject fields and an editable body
   function openRfi(i) {
     if (i == null) {
       i = 0;
       var worst = -1;
       result.bids.forEach(function (r, k) { if (r.deviations.length > worst && k !== result.recommended) { worst = r.deviations.length; i = k; } });
     }
-    var opts = state.bids.map(function (b, k) { return '<option value="' + k + '"' + (k === i ? ' selected' : '') + '>Bid ' + 'ABC'[k] + ' — ' + esc(bidName(k)) + ' (' + result.bids[k].deviations.length + ' flags)</option>'; }).join('');
-    openModal('Supplier RFI Email Draft', '<label class="mono dim" for="rfiVendor" style="font-size:11px;display:block;margin-bottom:6px">VENDOR</label><select id="rfiVendor">' + opts + '</select><textarea id="rfiText" spellcheck="true" aria-label="RFI email draft">' + esc(rfiText(i)) + '</textarea>', [
-      { label: 'Copy', cls: 'btn--ink', run: function () { copyText($('#rfiText').value); } },
-      { label: 'Open in mail client', run: function () {
-        var t = $('#rfiText').value, sub = t.split('\n')[0].replace(/^Subject:\s*/, ''), body = t.split('\n').slice(2).join('\n');
-        window.location.href = 'mailto:?subject=' + encodeURIComponent(sub) + '&body=' + encodeURIComponent(body);
-      } }
-    ]);
-    $('#rfiVendor').addEventListener('change', function () { $('#rfiText').value = rfiText(Number(this.value)); });
+    var opts = state.bids.map(function (b, k) { return '<option value="' + k + '"' + (k === i ? ' selected' : '') + '>Bid ' + 'ABC'[k] + ' · ' + esc(bidName(k)) + ' · ' + result.bids[k].deviations.length + ' flags</option>'; }).join('');
+    var p = rfiParts(i);
+    openModal('Supplier RFI', '<div class="composer">' +
+      '<div class="composer__f"><label for="rfiTo">To</label><input type="email" id="rfiTo" placeholder="proposals@vendor.com" autocomplete="off" spellcheck="false"></div>' +
+      '<div class="composer__f"><label for="rfiVendor">Vendor</label><select id="rfiVendor">' + opts + '</select></div>' +
+      '<div class="composer__f"><label for="rfiSubject">Subject</label><input type="text" id="rfiSubject" value="' + esc(p.subject) + '" spellcheck="true"></div>' +
+      '<textarea class="composer__body" id="rfiText" spellcheck="true" aria-label="Email body">' + esc(p.body) + '</textarea>' +
+      '<div class="composer__foot"><span class="composer__hint">Drafted from the detected deviations · edit freely before sending</span>' +
+      '<button class="pill pill--line" type="button" id="rfiCopy">Copy email</button>' +
+      '<button class="pill pill--ink pill--cta" type="button" id="rfiMail">Open in Mail <span class="pill__badge" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button></div>' +
+      '</div>', []);
+    $('#modal').classList.add('modal--composer');
+    $('#rfiVendor').addEventListener('change', function () { var q = rfiParts(Number(this.value)); $('#rfiSubject').value = q.subject; $('#rfiText').value = q.body; });
+    $('#rfiCopy').addEventListener('click', function () {
+      var to = $('#rfiTo').value.trim();
+      copyText((to ? 'To: ' + to + '\n' : '') + 'Subject: ' + $('#rfiSubject').value + '\n\n' + $('#rfiText').value);
+    });
+    $('#rfiMail').addEventListener('click', function () {
+      window.location.href = 'mailto:' + encodeURIComponent($('#rfiTo').value.trim()).replace(/%40/g, '@') + '?subject=' + encodeURIComponent($('#rfiSubject').value) + '&body=' + encodeURIComponent($('#rfiText').value);
+    });
   }
 
   function bindDeliverables() {
@@ -2095,6 +2141,12 @@
     s.textContent = msg; s.classList.toggle('status--err', !!err);
   }
 
+  function showPaste(open) {
+    $('#pasteWrap').hidden = !open;
+    $('#btnPasteToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+    $('#btnPasteToggle span').textContent = open ? 'Hide raw text' : 'Or paste raw text';
+    $('#btnClearQuote').hidden = !$('#quoteText').value;
+  }
   function bindParser() {
     renderParse(null);
     var engine = function () { return ($('input[name=engine]:checked') || {}).value || 'local'; };
@@ -2124,8 +2176,10 @@
       keys.azure = ''; $('#azKey').value = '';
     });
     bindUpload();
-    $('#btnSampleQuote').addEventListener('click', function () { $('#quoteText').value = SAMPLE_QUOTE; setStatus('Sample quotation inserted (fictional vendor). Run the parser.'); });
-    $('#btnClearQuote').addEventListener('click', function () { $('#quoteText').value = ''; parsed = null; renderParse(null); $('#btnInsert').disabled = true; setStatus('Cleared.'); });
+    $('#btnSampleQuote').addEventListener('click', function () { $('#quoteText').value = SAMPLE_QUOTE; showPaste(true); setStatus('Sample quotation inserted (fictional vendor). Run the parser.'); });
+    $('#btnClearQuote').addEventListener('click', function () { $('#quoteText').value = ''; parsed = null; renderParse(null); $('#btnInsert').disabled = true; showPaste(false); setStatus('Cleared.'); });
+    $('#btnPasteToggle').addEventListener('click', function () { var open = $('#pasteWrap').hidden; showPaste(open); if (open) $('#quoteText').focus(); });
+    $('#quoteText').addEventListener('input', function () { $('#btnClearQuote').hidden = !this.value; });
     $('#btnForgetKeys').addEventListener('click', function () {
       keys.azure = ''; keys.gemini = ''; $('#azKey').value = ''; $('#gmKey').value = '';
       setStatus('Keys cleared from memory.');
@@ -2271,6 +2325,7 @@
     fr.onload = function () {
       var t = String(fr.result || '');
       $('#quoteText').value = ext === 'csv' ? csvToText(t) : t;
+      showPaste(true);
       setStatus('Loaded ' + name + ' (' + num(file.size / 1024, 1) + ' KB) locally. Run the parser.');
     };
     fr.onerror = function () { setStatus('Could not read ' + name + '.', true); };
@@ -2424,14 +2479,17 @@
   function initTilt() {
     if (reduceMotion || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     $$('.tilt').forEach(function (el) {
-      var cur = { rx: 0, ry: 0, sh: 0 }, tgt = { rx: 0, ry: 0, sh: 0 }, raf = 0, MAX = 2.5;
+      var cur = { rx: 0, ry: 0, sh: 0 }, tgt = { rx: 0, ry: 0, sh: 0 }, raf = 0, MAX = el.id === 'heroFrame' ? 4.5 : 2.5;
       function loop() {
-        var k = 0.12, d = 0;
+        var k = 0.1, d = 0;
         ['rx', 'ry', 'sh'].forEach(function (p) { cur[p] += (tgt[p] - cur[p]) * k; d = Math.max(d, Math.abs(tgt[p] - cur[p])); });
         el.style.setProperty('--rx', cur.rx.toFixed(3) + 'deg');
         el.style.setProperty('--ry', cur.ry.toFixed(3) + 'deg');
         el.style.setProperty('--sheen', cur.sh.toFixed(3));
-        raf = d > 0.002 ? requestAnimationFrame(loop) : 0;
+        // parallax: the impeller drifts against the tilt, floating cards drift with it
+        el.style.setProperty('--px', (cur.ry / MAX).toFixed(4));
+        el.style.setProperty('--py', (-cur.rx / MAX).toFixed(4));
+        raf = d > 0.001 ? requestAnimationFrame(loop) : 0;
       }
       el.addEventListener('pointermove', function (e) {
         var r = el.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
@@ -2485,7 +2543,8 @@
       return [u, v];
     }
     function step(dt) {
-      var speed = 0.7 + 1.0 * heroFlow;
+      heroSurge = Math.max(0, heroSurge - 0.018 * dt);
+      var speed = (0.7 + 1.0 * heroFlow) * (1 + 1.6 * heroSurge * heroSurge);
       mouse.x += (mouse.tx - mouse.x) * 0.12; mouse.y += (mouse.ty - mouse.y) * 0.12;
       for (var i = 0; i < parts.length; i++) {
         var p = parts[i], f = field(p.x, p.y);
@@ -2576,7 +2635,15 @@
     initReticle();
     $$('[data-pilot]').forEach(function (b) { b.addEventListener('click', function () { openPilot(b.getAttribute('data-pilot')); }); });
     route();
-    requestAnimationFrame(function () { doc.documentElement.classList.add('is-ready'); doc.body.classList.add('is-ready'); });
+    var intro = $('#intro'), html = doc.documentElement;
+    function ready() { html.classList.add('is-ready'); doc.body.classList.add('is-ready'); }
+    function endIntro() { if (intro && intro.parentNode) intro.parentNode.removeChild(intro); html.classList.remove('intro-on'); }
+    if (html.classList.contains('intro-on') && !appOpen) {
+      // the hero starts its own reveal as the curtain lifts
+      setTimeout(ready, 760);
+      intro.addEventListener('animationend', function (e) { if (e.animationName === 'introLift') endIntro(); });
+      setTimeout(endIntro, 1700);
+    } else { endIntro(); requestAnimationFrame(ready); }
   }
 
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', init); else init();
