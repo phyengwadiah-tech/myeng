@@ -225,7 +225,7 @@ select option { background: var(--carbon); color: var(--stone); }
 .formulas__body { font-size: 12px; line-height: 1.7; color: #C9CBCF; margin-top: 12px; display: grid; gap: 4px; }
 
 /* Hydraulics */
-.hyd { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 24px; }
+.hyd { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 24px; }
 .hyd__main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .chart-card { border: 1px solid var(--hair-d); background: var(--carbon); }
 .chart-card__head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-d); padding: 14px 18px; border-bottom: 1px solid var(--hair-d); }
@@ -840,7 +840,7 @@ body.app-open .rail { opacity: 0; pointer-events: none; }
    REV 05 responsive
    ===================================================================== */
 @media (max-width: 1240px) { .rail { display: none; } }
-@media (max-width: 1180px) {
+@media (max-width: 1320px) {
   .app__bar { flex-wrap: wrap; height: auto; padding: 10px 16px 0; gap: 10px 16px; }
   .app__brand { margin-right: auto; }
   .proj { order: 4; }
@@ -887,3 +887,112 @@ body.app-open .rail { opacity: 0; pointer-events: none; }
 .modal__body .pilot__h { font-size: 10.5px; line-height: 1.4; }
 .modal__body .pilot__intro { font-size: 15px; }
 @media (max-width: 1320px) { .proj__btn { max-width: 300px; } }
+
+/* =====================================================================
+   REV 06 — live QA fixes
+   ===================================================================== */
+/* Hero: headline, subtitle, CTAs and the top half of the frame above the fold */
+.hero { padding: clamp(104px, 14vh, 132px) 0 140px; }
+.hero__title { margin-top: 22px; font-size: clamp(40px, min(5.4vw, 8.4vh), 80px); }
+.hero__sub { margin-top: 24px; }
+.hero__ctas { margin-top: 30px; }
+.frame-hero { margin: 40px auto 0; max-height: 64vh; }
+
+/* Studio opens on an opaque obsidian backdrop; only its contents ease in */
+.app { opacity: 0; visibility: hidden; transform: none; background: var(--ink);
+  transition: opacity .3s var(--ease), visibility 0s linear .3s; }
+.app.is-open { opacity: 1; visibility: visible; transform: none; transition: none; }
+.app > * { opacity: 0; transform: translateY(14px); transition: opacity .5s var(--ease), transform .7s var(--ease); }
+.app.is-open > * { opacity: 1; transform: none; transition-delay: .04s; }
+.app.is-open > .app__bar { transform: none; }
+body.app-open .site { opacity: 0; transform: none; transition: opacity .2s linear; }
+
+/* Modal: crisp close icon, clears the floating nav, one scroll surface */
+.modal { z-index: 1000; }
+.modal[open] { margin: max(84px, 8vh) auto 24px; max-height: calc(100dvh - max(84px, 8vh) - 24px); }
+.modal__body { overscroll-behavior: contain; }
+.modal__close { display: inline-flex; align-items: center; justify-content: center; color: var(--ink); }
+.modal__close svg { display: block; }
+html.modal-open, html.modal-open body { overflow: hidden; }
+.modal__body .pilot__preview { min-height: 0; overflow: hidden; resize: none; }
+
+/* Rail: labels switch to stone wherever they sit over a dark panel */
+.rail { right: max(14px, calc((100vw - 1320px) / 2 - 46px)); }
+.rail a.on-dark span, .rail a.on-dark.is-active span { color: var(--stone); }
+.rail a.on-dark::after { background: var(--stone); }
+
+/* Micro-typography */
+.sv__raw span, .sv__stats b, .sv__tbl td, .doc__meta { white-space: nowrap; }
+.sframe { transition: opacity .28s var(--ease), transform .5s var(--ease); }
+.sframe.is-active { transition: opacity .7s var(--ease) .22s, transform .9s var(--ease) .22s; }
+.proj__btn { max-width: none; }
+.proj__name { white-space: nowrap; }
+.field--vendor select { font-family: var(--sans); font-size: 13px; text-align: left; padding-right: 26px; }
+@media (max-width: 600px) { .proj__name { white-space: normal; } }
+
+/* =====================================================================
+   Live equipment telemetry twin (hydraulics)
+   ===================================================================== */
+.twin { border: 1px solid var(--hair-d); background: var(--ink); box-shadow: inset 0 1px 0 rgba(244,243,239,.08); }
+.twin__head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 18px; border-bottom: 1px solid var(--hair-d);
+  font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-d); }
+.twin__head > span:first-child { display: inline-flex; align-items: center; gap: 10px; color: var(--stone); }
+.twin__alerts { display: flex; gap: 8px; flex-wrap: wrap; }
+.talert { font-size: 10px; letter-spacing: .1em; padding: 4px 8px; border: 1px solid var(--hair-d); color: var(--muted-d); white-space: nowrap; }
+.talert--bad { border-color: var(--verm); background: rgba(224,70,25,.16); color: var(--stone); animation: talert 1.6s var(--ease) infinite; }
+@keyframes talert { 50% { background: rgba(224,70,25,.32); } }
+.twin__stage { position: relative; aspect-ratio: 1000 / 440; }
+.twin__stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.twin__tags { margin: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--hair-d); }
+.ttag { padding: 12px 14px; border-right: 1px solid var(--hair-d); min-width: 0; }
+.ttag:last-child { border-right: 0; }
+.ttag dt { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-d); margin-bottom: 6px; }
+.ttag dd { margin: 0; }
+.ttag dd > span { display: block; font-size: 14px; font-weight: 500; color: var(--stone); white-space: nowrap; }
+.ttag dd small { display: block; margin-top: 3px; font-size: 11px; color: var(--muted-d); line-height: 1.35; overflow-wrap: anywhere; }
+.ttag--alert { box-shadow: inset 0 2px 0 var(--verm); background: rgba(224,70,25,.08); }
+
+/* =====================================================================
+   Operating twin strip (TBE)
+   ===================================================================== */
+.estrip { display: grid; grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1.5fr); gap: 20px; align-items: center; padding: 14px 20px;
+  border: 1px solid var(--hair-d); background: var(--carbon); box-shadow: inset 0 1px 0 rgba(244,243,239,.08); --flow: 1.6s; }
+.estrip__imp { width: 64px; height: 64px; display: block; }
+.estrip__txt { display: grid; gap: 3px; min-width: 0; }
+.estrip__k { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-d); }
+.estrip__txt b { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.estrip__meta { font-size: 11.5px; color: var(--muted-d); }
+.estrip__bar { display: grid; gap: 8px; min-width: 0; }
+.ebar { display: flex; height: 12px; background: var(--hair-d); overflow: hidden; }
+.ebar span { display: block; height: 100%; transition: width .9s var(--ease); }
+.ebar__capex { background: var(--stone); }
+.ebar__energy { background-color: var(--verm); background-image: repeating-linear-gradient(90deg, transparent 0 10px, rgba(17,18,20,.32) 10px 12px); background-size: 24px 100%; animation: eflow var(--flow) linear infinite; }
+.ebar__maint { background: var(--muted-d); }
+@keyframes eflow { to { background-position: 24px 0; } }
+.ebar__leg { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 11px; color: var(--muted-d); }
+.ebar__leg span { white-space: nowrap; }
+.ebar__leg b { color: var(--stone); font-weight: 500; }
+.lg { display: inline-block; width: 8px; height: 8px; margin-right: 6px; vertical-align: 0; }
+.lg--capex { background: var(--stone); } .lg--energy { background: var(--verm); } .lg--maint { background: var(--muted-d); }
+
+@media (max-width: 1320px) { .twin__tags { grid-template-columns: repeat(4, minmax(0, 1fr)); } .ttag:nth-child(4n) { border-right: 0; } .ttag:nth-child(-n+4) { border-bottom: 1px solid var(--hair-d); } }
+@media (max-width: 860px) {
+  .estrip { grid-template-columns: 56px minmax(0, 1fr); }
+  .estrip__imp { width: 56px; height: 56px; }
+  .estrip__bar { grid-column: 1 / -1; }
+}
+@media (max-width: 600px) {
+  .twin__stage { aspect-ratio: 1000 / 470; }
+  .twin__tags { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ttag { border-bottom: 1px solid var(--hair-d); }
+  .ttag:nth-child(4n) { border-right: 1px solid var(--hair-d); }
+  .ttag:nth-child(2n) { border-right: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ebar__energy, .talert--bad { animation: none; }
+  .app > * { transform: none; }
+}
+.ttag--name dd > span { font-family: var(--sans); white-space: normal; font-size: 13.5px; line-height: 1.3; font-weight: 600; }
+.twin__tags { grid-template-columns: minmax(0, 1.25fr) repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1320px) { .twin__tags { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .twin__tags { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

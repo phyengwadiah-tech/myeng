@@ -17,7 +17,7 @@
      Sample engineering case study (illustrative figures, editable)
      ================================================================ */
   var SAMPLE = {
-    project: { tag: 'P-4101 A/B', service: 'Process water transfer, API 610 OH2' },
+    project: { tag: 'P-4101 A/B', service: 'Process water transfer, API 610 OH2', rpm: 2980 },
     duty: { Q: 420, H: 68, hours: 8000, tariff: 0.11, horizon: 10 },
     basis: { rho: 998, minEff: 76, material: 'S-6', minMawp: 40, maxLead: 24, ef: 0.55 },
     hyd: {
@@ -34,7 +34,7 @@
 
   var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
   var SAMPLE2 = {
-    project: { tag: 'P-2201 A/B', service: 'Cooling water circulation, ISO 5199' },
+    project: { tag: 'P-2201 A/B', service: 'Cooling water circulation, ISO 5199', rpm: 1480 },
     duty: { Q: 180, H: 42, hours: 7200, tariff: 0.09, horizon: 10 },
     basis: { rho: 998, minEff: 72, material: 'I-2', minMawp: 16, maxLead: 16, ef: 0.55 },
     hyd: {
@@ -120,8 +120,14 @@
     ws.active = id;
     storeWrite();
     state = clone(currentProject().state);
-    buildMatrix(); recompute(); syncInputs(); renderProjects();
+    swapIn();
     if (!silent) toast('Opened ' + currentProject().name + '.');
+  }
+  // Replace the whole working state: no count-up animation, nothing half-way.
+  function swapIn() {
+    settleRolls(); rollOff = true;
+    try { buildMatrix(); recompute(); syncInputs(); renderProjects(); }
+    finally { rollOff = false; }
   }
   function openTemplateProject(key) {
     var found = ws.projects.filter(function (p) { return p.template === key && p.name === TEMPLATES[key].name; })[0];
@@ -191,21 +197,21 @@
         ws.projects.splice(idx, 1);
         ws.active = ws.projects[Math.max(0, idx - 1)].id;
         state = clone(currentProject().state);
-        storeWrite(); setMenu(false); buildMatrix(); recompute(); syncInputs(); renderProjects();
+        storeWrite(); setMenu(false); swapIn();
         toast('Deleted ' + gone + '.');
       }
       if (a === 'clear') {
         if (armed !== 'clear') { armed = 'clear'; b.textContent = 'Click again to clear'; b.classList.add('is-armed'); return; }
         try { window.localStorage.removeItem(STORE_KEY); } catch (err) { /* storage unavailable */ }
         seedWorkspace(); storeWrite(); state = clone(currentProject().state);
-        setMenu(false); buildMatrix(); recompute(); syncInputs(); renderProjects();
+        setMenu(false); swapIn();
         toast('Local data cleared. Templates restored.');
       }
     });
     $('#btnResetTpl').addEventListener('click', function () {
       var p = currentProject(); if (!p.template || !TEMPLATES[p.template]) return;
       state = clone(TEMPLATES[p.template].state);
-      buildMatrix(); recompute(); syncInputs();
+      swapIn();
       toast('Reset ' + p.name + ' to its template values.');
     });
   }
@@ -291,6 +297,8 @@
     renderKpis();
     renderBars();
     renderHyd();
+    renderTwin();
+    renderStrip();
     renderStory();
     saveSoon();
     syncSliderLabels();
@@ -419,7 +427,7 @@
     { k: 'energyH', label: 'Energy over horizon', unit: 'USD', f: function (r) { return money(r.energyH); } },
     { k: 'maintH', label: 'Maintenance over horizon', unit: 'USD', f: function (r) { return money(r.maintH); } },
     { k: 'tco', label: 'Total cost of ownership', unit: 'USD', strong: true, f: function (r) { return money(r.tco); } },
-    { k: 'savingsVsCheapest', label: 'Net vs lowest-CapEx bid', unit: 'USD', f: function (r) { return money(r.savingsVsCheapest, true); } },
+    { k: 'savingsVsCheapest', label: 'ΔTCO vs lowest-CapEx bid', unit: 'USD', f: function (r) { return deltaTco(r); } },
     { k: 'co2', label: 'Annual CO₂', unit: 't/yr', f: function (r) { return num(r.co2, 1); } }
   ];
 
@@ -492,11 +500,17 @@
     var html = '' +
       kpi(result.anyCompliant ? 'Recommended award' : 'Lowest TCO · not compliant', esc(bidName(rec)), result.anyCompliant ? 'Lowest TCO among compliant bids' : 'No bid is fully compliant — see deviations', false, true) +
       kpi(n + '-yr TCO', money(r.tco), 'CapEx ' + moneyShort(state.bids[rec].capex) + ' · energy ' + moneyShort(r.energyH), true) +
-      kpi('Net vs lowest CapEx', rec === ch ? '$0' : money(r.savingsVsCheapest, true), rec === ch ? 'Lowest-CapEx bid is also lowest TCO' : 'vs ' + esc(bidName(ch)) + ' over ' + n + ' yrs') +
+      kpi('vs lowest-CapEx bid', savesText(r), rec === ch ? 'Lowest-CapEx bid is also lowest TCO' : 'ΔTCO ' + deltaTco(r) + ' vs ' + esc(bidName(ch)) + ' over ' + n + ' yrs') +
       kpi('CO₂ vs lowest CapEx', (Math.abs(co2d) < 0.05 ? '' : co2d > 0 ? MINUS : '+') + num(Math.abs(co2d), 1) + ' t/yr', 'at ' + state.basis.ef.toFixed(2) + ' kg CO₂/kWh');
     rollRender($('#tbeKpis'), html);
     $('#tbeNpsha').textContent = num(result.npsha.npsha, 2) + ' m';
     $('#tabHorizon').textContent = n;
+  }
+  // ΔTCO sign convention used everywhere: negative = cheaper over life than the lowest-CapEx bid.
+  function deltaTco(r) { var d = -r.savingsVsCheapest; return Math.round(d) === 0 ? '$0' : money(d, true); }
+  function savesText(r) {
+    var sv = Math.round(r.savingsVsCheapest);
+    return sv > 0 ? 'Saves ' + money(sv) : sv < 0 ? 'Costs ' + money(-sv) + ' more' : '$0';
   }
   function kpi(k, v, s, verm, sans) {
     var key = String(k).replace(/<[^>]+>/g, '');
@@ -715,8 +729,10 @@
     var st = study, d = state.duty, b = state.basis;
     hqChart.set(chartTarget(st));
     var sel = $('#hydVendor');
-    sel.options[0].textContent = 'Recommended — ' + bidName(result.recommended);
-    state.bids.forEach(function (x, i) { sel.options[i + 1].textContent = 'Bid ' + 'ABC'[i] + ' — ' + bidName(i); });
+    sel.options[0].textContent = 'Recommended · ' + bidName(result.recommended);
+    state.bids.forEach(function (x, i) { sel.options[i + 1].textContent = bidName(i); });
+    var slot = $('#slotSelect');
+    if (slot && slot.options.length === 3) state.bids.forEach(function (x, i) { slot.options[i].textContent = 'Slot ' + 'ABC'[i] + ' · ' + bidName(i); });
 
     if (st.noFlow) {
       $('#hydReadouts').innerHTML = kpi('Operating point', '—', 'Shutoff head ' + num(st.s * st.s * st.H0, 1) + ' m < static ' + num(state.hyd.zStatic, 1) + ' m') +
@@ -879,6 +895,12 @@
       ind.style.transform = 'translateY(' + (f * (rail.clientHeight - 2)).toFixed(1) + 'px)';
       var act = Math.min(tops.length - 1, Math.round(pos - 0.2 < 0 ? 0 : Math.floor(pos + 0.0001)));
       links.forEach(function (a, k) { a.classList.toggle('is-active', k === act); });
+      // never dark-on-dark: flip a label to stone when it sits over an obsidian panel
+      var darks = $$('.frame-hero, .stage, .sstep__media').map(function (d) { return d.getBoundingClientRect(); });
+      links.forEach(function (a) {
+        var r = a.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        a.classList.toggle('on-dark', darks.some(function (d) { return cx >= d.left && cx <= d.right && cy >= d.top && cy <= d.bottom; }));
+      });
     }
     window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
     window.addEventListener('resize', update);
@@ -922,6 +944,75 @@
   }
 
   /* ================================================================
+     Equipment twin (hydraulics) + operating strip (TBE)
+     Values come from the engine; twin.js only draws them.
+     ================================================================ */
+  var pumpTwin = null, miniTwin = null, lastAlert = '';
+  function initTwins() {
+    if (!window.MyengTwin) return;
+    pumpTwin = window.MyengTwin.pump($('#twinCanvas'), { reduced: reduceMotion });
+    miniTwin = window.MyengTwin.mini($('#stripImp'), { reduced: reduceMotion });
+    doc.addEventListener('visibilitychange', twinSync);
+  }
+  function twinSync() {
+    if (!pumpTwin) return;
+    var show = appOpen && !doc.hidden;
+    if (show && activeTab === 'hyd') pumpTwin.start(); else pumpTwin.stop();
+    if (show && activeTab === 'tbe') miniTwin.start(); else miniTwin.stop();
+  }
+  function tag(k, v, s, alert, cls) {
+    var key = k.replace(/<[^>]+>/g, '');
+    return '<div class="ttag' + (alert ? ' ttag--alert' : '') + (cls ? ' ' + cls : '') + '"><dt class="mono">' + k + '</dt><dd><span class="mono" data-roll="' + key + '">' + v + '</span>' + (s ? '<small>' + s + '</small>' : '') + '</dd></div>';
+  }
+  function renderTwin() {
+    if (!pumpTwin) return;
+    var st = study, d = state.duty, h = state.hyd, bid = st.bid;
+    var rpmRated = state.project.rpm || 2980, rpm = rpmRated * st.s;
+    var d2 = E.impellerDiameterEst(d.H, rpmRated);
+    var host = $('#twinTags'), alerts = $('#twinAlerts');
+    if (st.noFlow) {
+      pumpTwin.update({ speed: st.s, flow: 0, vSuc: 0.01, vDis: 0.01, D: h.D, Ds: h.Ds, margin: 9, shaftKw: 0, motorKw: bid.motorKw, erosion: false, rpm: rpm, d2: d2, H: 0 });
+      alerts.innerHTML = '<span class="talert talert--bad">NO DELIVERY · SHUTOFF BELOW STATIC HEAD</span>';
+      rollRender(host, tag('Speed', num(rpm) + ' rpm', h.speed + '% of ' + num(rpmRated)) + tag('Flow', '0 m³/h', 'pump dead-heads'));
+      return;
+    }
+    var cav = st.npshMargin < 1, ero = st.vDis > 3.5;
+    pumpTwin.update({
+      speed: st.s, flow: st.op.Q, vSuc: st.vSuc, vDis: st.vDis, D: h.D, Ds: h.Ds, margin: st.npshMargin,
+      shaftKw: st.PshaftOp, motorKw: bid.motorKw, erosion: ero, rpm: rpm, d2: d2, H: st.op.H
+    });
+    var a = (cav ? '<span class="talert talert--bad">CAVITATION ONSET · EYE ZONE</span>' : '<span class="talert">NPSH SAFE</span>') +
+      (ero ? '<span class="talert talert--bad">EROSION RISK · &gt;3.5 m/s</span>' : '');
+    if (a !== lastAlert) { alerts.innerHTML = a; lastAlert = a; }
+    rollRender(host,
+      tag('Bidder', esc(bidName(st.bidIndex)), esc(state.project.tag), false, 'ttag--name') +
+      tag('Suction', num(st.vSuc, 2) + ' m/s', 'Ø' + num(h.Ds, 1) + ' mm · NPSHa ' + num(st.npsha, 2) + ' m') +
+      tag('Impeller Ø', '≈' + num(d2) + ' mm', num(rpm) + ' rpm · est. ψ 1.05') +
+      tag('Discharge H', num(st.op.H, 1) + ' m', num(st.op.Q) + ' m³/h · ' + num(st.vDis, 2) + ' m/s', ero) +
+      tag('Motor kW', num(bid.motorKw) + ' kW', 'shaft ' + num(st.PshaftOp, 1) + ' kW · VFD ' + h.speed + '%') +
+      tag('Efficiency <span class="nt">η</span>', num(st.etaOp * 100, 1) + ' %', 'BEP ' + num(bid.etaBep, 1) + '% at ' + num(st.qBepS) + ' m³/h') +
+      tag('NPSH margin', (st.npshMargin >= 0 ? '+' : '') + num(st.npshMargin, 2) + ' m', 'NPSHr ' + num(st.npshr, 2) + ' m at OP', cav));
+  }
+  function renderStrip() {
+    if (!miniTwin) return;
+    var rec = result.recommended, r = result.bids[rec], b = state.bids[rec];
+    var tot = b.capex + r.energyH + r.maintH;
+    var pc = function (v) { return (v / tot * 100); };
+    $('#stripName').textContent = bidName(rec);
+    rollText($('#stripMeta'), 'η ' + num(r.eta * 100, 1) + ' % · ' + num(r.Pin, 1) + ' kW · ' + num(r.kWh / 1000) + ' MWh/yr');
+    $('#ebCapex').style.width = pc(b.capex).toFixed(2) + '%';
+    $('#ebEnergy').style.width = pc(r.energyH).toFixed(2) + '%';
+    $('#ebMaint').style.width = pc(r.maintH).toFixed(2) + '%';
+    rollText($('#ebCapexP'), num(pc(b.capex), 0) + '%');
+    rollText($('#ebEnergyP'), num(pc(r.energyH), 0) + '%');
+    rollText($('#ebMaintP'), num(pc(r.maintH), 0) + '%');
+    // energy flow speed follows the cost of running: hours × tariff
+    var intensity = Math.min(1, (state.duty.hours * state.duty.tariff) / 1500);
+    $('#estrip').style.setProperty('--flow', (2.6 - 2 * intensity).toFixed(2) + 's');
+    miniTwin.update(0.02 + 0.07 * Math.min(1, state.duty.Q / 600));
+  }
+
+  /* ================================================================
      Tabs & navigation
      ================================================================ */
   var activeTab = 'tbe';
@@ -945,6 +1036,7 @@
     $$('.tabpanel').forEach(function (p) { p.hidden = p.id !== 'panel-' + name; });
     if (name === 'hyd' && hqChart) { hqChart.cur = null; hqChart.set(chartTarget(study)); }
     moveInk();
+    twinSync();
     if (appOpen && $('#app').scrollTop > 0) $('#app').scrollTo({ top: 0 });
     if (!keepHash && appOpen) history.replaceState(history.state, '', '#studio/' + TAB_SLUG[name]);
   }
@@ -977,6 +1069,7 @@
       app.focus({ preventScroll: true });
     });
     doc.title = 'MYENG Studio — Technical Bid Evaluation';
+    twinSync();
   }
   function closeApp() {
     if (!appOpen) return;
@@ -986,6 +1079,7 @@
     app.setAttribute('inert', ''); $('#site').removeAttribute('inert');
     doc.body.classList.remove('app-open');
     doc.title = 'MYENG — Rotating Equipment Intelligence';
+    twinSync();
     if (returnFocus && returnFocus.focus && doc.contains(returnFocus)) returnFocus.focus({ preventScroll: true });
   }
   function launch(tab) {
@@ -1053,6 +1147,7 @@
       a.appendChild(b);
     });
     $('#modalBody').scrollTop = 0;
+    doc.documentElement.classList.add('modal-open');
     if (typeof modal.showModal === 'function') modal.showModal(); else modal.setAttribute('open', '');
   }
   function closeModal() {
@@ -1108,7 +1203,7 @@
       Ph: function (r) { return r.Ph.toFixed(2); }, Pshaft: function (r) { return r.Pshaft.toFixed(2); }, Pin: function (r) { return r.Pin.toFixed(2); },
       motorReq: function (r) { return r.motorReq.toFixed(2); }, npshMargin: function (r) { return r.npshMargin.toFixed(2); },
       energyYr: function (r) { return r.energyYr.toFixed(0); }, energyH: function (r) { return r.energyH.toFixed(0); }, maintH: function (r) { return r.maintH.toFixed(0); },
-      tco: function (r) { return r.tco.toFixed(0); }, savingsVsCheapest: function (r) { return r.savingsVsCheapest.toFixed(0); }, co2: function (r) { return r.co2.toFixed(2); }
+      tco: function (r) { return r.tco.toFixed(0); }, savingsVsCheapest: function (r) { return (-r.savingsVsCheapest).toFixed(0); }, co2: function (r) { return r.co2.toFixed(2); }
     };
     OUT_ROWS.forEach(function (r) { if (r.k) rows.push([r.label.replace(/<[^>]+>/g, ''), r.unit].concat(result.bids.map(function (x) { return raw[r.k](x); }))); });
     rows.push(['Status', ''].concat(result.bids.map(function (r, i) { return i === result.recommended && result.anyCompliant ? 'RECOMMENDED' : r.compliant ? 'Compliant' : 'Non-compliant'; })));
@@ -1126,7 +1221,7 @@
     row('Electrical input', function (r) { return num(r.Pin, 1) + ' kW'; });
     row('Annual energy cost', function (r) { return money(r.energyYr); });
     row(state.duty.horizon + '-yr TCO', function (r) { return '<b>' + money(r.tco) + '</b>'; });
-    row('Net vs lowest CapEx', function (r) { return money(r.savingsVsCheapest, true); });
+    row('ΔTCO vs lowest-CapEx bid', function (r) { return deltaTco(r); });
     row('NPSH margin', function (r) { return num(r.npshMargin, 2) + ' m'; });
     row('Material / MAWP', function (r, b) { return esc(b.material) + ' / ' + num(b.mawp) + ' bar'; });
     row('Motor (min. API 610)', function (r, b) { return num(b.motorKw) + ' (' + num(r.motorReq, 1) + ') kW'; });
@@ -1576,7 +1671,7 @@
       recompute();
       activateTab('tbe');
       $('#app').scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
-      toast(n + ' fields inserted into Bid ' + 'ABC'[i] + ' — ' + bidName(i) + '.');
+      toast(n + ' fields inserted into slot ' + 'ABC'[i] + ' · ' + bidName(i) + '.');
     });
   }
 
@@ -1638,7 +1733,7 @@
         team: $('#pTeam').value, volume: $('#pVolume').value, cloud: $('#pCloud').value, std: $('#pStd').value, notes: $('#pNotes').value.trim()
       };
     };
-    var upd = function () { $('#pPreview').value = pilotText(read()); };
+    var upd = function () { var ta = $('#pPreview'); ta.value = pilotText(read()); ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; };
     $('#modalBody').addEventListener('input', upd);
     $('#modalBody').addEventListener('change', upd);
     upd();
@@ -1762,19 +1857,27 @@
      Rolling tabular counters
      ================================================================ */
   var NUM_RE = /(\d[\d,]*(?:\.\d+)?)/;
-  var tweens = new WeakMap();
+  var tweens = new Map();   // el -> {raf, timer, next}
+  var rollOff = false;      // true while a whole package is being swapped in
+  function finishTween(el) {
+    var tw = tweens.get(el); if (!tw) return;
+    cancelAnimationFrame(tw.raf); clearTimeout(tw.timer);
+    el.textContent = tw.next; tweens.delete(el);
+  }
+  // Snap every running counter to its final value (used before package switches).
+  function settleRolls() { Array.from(tweens.keys()).forEach(finishTween); }
   function splitNum(t) { return String(t).split(NUM_RE); }
   function rollText(el, next) {
     if (!el) return;
     var prev = el.getAttribute('data-final');
     if (prev == null) prev = el.textContent;
     el.setAttribute('data-final', next);
-    if (prev === next) { if (!tweens.has(el)) el.textContent = next; return; }
+    if (tweens.has(el)) finishTween(el);
+    if (prev === next) { el.textContent = next; return; }
     var a = splitNum(prev), b = splitNum(next);
-    var same = !reduceMotion && a.length === b.length && a.length > 1 &&
+    var same = !reduceMotion && !rollOff && !doc.hidden && a.length === b.length && a.length > 1 &&
       a.every(function (x, i) { return i % 2 === 1 || x === b[i]; });
-    var old = tweens.get(el); if (old) cancelAnimationFrame(old.raf);
-    if (!same) { tweens.delete(el); el.textContent = next; return; }
+    if (!same) { el.textContent = next; return; }
     var t0 = performance.now(), dur = 520;
     var from = a.map(function (x, i) { return i % 2 ? parseFloat(x.replace(/,/g, '')) : x; });
     var meta = b.map(function (x, i) {
@@ -1782,26 +1885,29 @@
       var d = x.indexOf('.') >= 0 ? x.length - x.indexOf('.') - 1 : 0;
       return { to: parseFloat(x.replace(/,/g, '')), d: d, comma: x.indexOf(',') >= 0 || parseFloat(x.replace(/,/g, '')) >= 1000 && /,/.test(prev) };
     });
-    var tw = {};
+    var tw = { next: next, raf: 0, timer: 0 };
+    tweens.set(el, tw);
+    // Guarantee the final value even if animation frames stop (background tab, throttling).
+    tw.timer = setTimeout(function () { finishTween(el); }, dur + 120);
     (function step(now) {
+      if (tweens.get(el) !== tw) return;
       var t = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - t, 3);
       el.textContent = b.map(function (x, i) {
         if (!(i % 2)) return x;
         var m = meta[i], v = from[i] + (m.to - from[i]) * e;
         return m.comma ? v.toLocaleString('en-US', { minimumFractionDigits: m.d, maximumFractionDigits: m.d }) : v.toFixed(m.d);
       }).join('');
-      if (t < 1) tw.raf = requestAnimationFrame(step); else { el.textContent = next; tweens.delete(el); }
+      if (t < 1) tw.raf = requestAnimationFrame(step); else finishTween(el);
     })(t0);
-    tweens.set(el, tw);
   }
   // Re-render a container but roll [data-roll] numbers from their previous values.
   function rollRender(host, html) {
     var prev = {};
-    $$('[data-roll]', host).forEach(function (el) { prev[el.getAttribute('data-roll')] = el.getAttribute('data-final') || el.textContent; });
+    $$('[data-roll]', host).forEach(function (el) { prev[el.getAttribute('data-roll')] = el.getAttribute('data-final') || el.textContent; finishTween(el); });
     host.innerHTML = html;
     $$('[data-roll]', host).forEach(function (el) {
       var k = el.getAttribute('data-roll'), next = el.textContent;
-      if (prev[k] != null) { el.textContent = prev[k]; el.setAttribute('data-final', prev[k]); rollText(el, next); }
+      if (prev[k] != null && !rollOff) { el.textContent = prev[k]; el.setAttribute('data-final', prev[k]); rollText(el, next); }
       else el.setAttribute('data-final', next);
     });
   }
@@ -1932,6 +2038,7 @@
     $('#year').textContent = new Date().getFullYear();
     initWorkspace();
     initCharts();
+    initTwins();
     buildSliders();
     buildMatrix();
     doc.addEventListener('input', onBoundInput);
@@ -1945,7 +2052,7 @@
 
     $('#modalClose').addEventListener('click', closeModal);
     $('#modal').addEventListener('click', function (e) { if (e.target === this) closeModal(); });
-    $('#modal').addEventListener('close', function () { if (lastFocus && lastFocus.focus) lastFocus.focus(); });
+    $('#modal').addEventListener('close', function () { doc.documentElement.classList.toggle('modal-open', false); if (lastFocus && lastFocus.focus) lastFocus.focus(); });
     $$('[data-legal]').forEach(function (b) {
       b.addEventListener('click', function () { var l = LEGAL[b.getAttribute('data-legal')]; openModal(l[0], '<div class="rep">' + l[1] + '</div>'); });
     });

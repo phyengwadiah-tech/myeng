@@ -208,7 +208,7 @@
     var npshr = npshRequired(bid.npshr, op.Q, d.Q);
     var saveKw = Pthr - Pvfd;
 
-    out.etaOp = etaOp; out.PhOp = PhOp; out.Pvfd = Pvfd; out.Hthr = Hthr; out.Pthr = Pthr;
+    out.etaOp = etaOp; out.PhOp = PhOp; out.Pvfd = Pvfd; out.PshaftOp = PhOp / etaOp; out.Hthr = Hthr; out.Pthr = Pthr;
     out.saveKw = saveKw;
     out.saveUsd = saveKw * d.hours * d.tariff;
     out.saveCo2 = saveKw * d.hours * b.ef / 1000;
@@ -217,6 +217,17 @@
     out.qBepS = bid.qBep * s;
     out.affinity = { Q: s, H: s * s, P: s * s * s };
     return out;
+  }
+
+  /* ---------- Impeller size estimate (twin labelling only) ---------- */
+
+  // Outlet diameter from the head coefficient ψ = 2gH / u2²  (ψ ≈ 1.05 for radial impellers):
+  // u2 = √(2gH/ψ),  D2 = 60·u2 / (π·n)  → mm.  An estimate, not vendor data.
+  function impellerDiameterEst(H, rpm, psi) {
+    psi = psi || 1.05;
+    if (!(H > 0) || !(rpm > 0)) return 0;
+    var u2 = Math.sqrt(2 * G * H / psi);
+    return 60 * u2 / (Math.PI * rpm) * 1000;
   }
 
   /* ---------- Fleet ROI (pricing section) ---------- */
@@ -236,6 +247,6 @@
     frictionFactor: frictionFactor, pipeLoss: pipeLoss, systemHead: systemHead, pumpHead: pumpHead,
     pumpMaxFlow: pumpMaxFlow, operatingPoint: operatingPoint, npshAvailable: npshAvailable,
     npshRequired: npshRequired, MATERIAL_CLASSES: MATERIAL_CLASSES, evaluateBid: evaluateBid,
-    evaluate: evaluate, hydraulicStudy: hydraulicStudy, fleetSavings: fleetSavings
+    evaluate: evaluate, hydraulicStudy: hydraulicStudy, fleetSavings: fleetSavings, impellerDiameterEst: impellerDiameterEst
   };
 })(typeof window !== 'undefined' ? window : globalThis);
