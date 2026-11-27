@@ -255,7 +255,7 @@
      ================================================================= -->
 <section class="app" id="app" aria-label="MYENG Studio" tabindex="-1" inert>
   <header class="app__bar">
-    <button class="app__back" type="button" id="btnBack"><span aria-hidden="true">←</span> Back to site</button>
+    <button class="app__back" type="button" id="btnBack" aria-label="Back to site"><span aria-hidden="true">←</span><span class="hide-sm">Back to site</span></button>
     <a class="app__brand" href="/" data-home aria-label="MYENG — close Studio and return to the top of the site">
       <svg class="brand__mark" aria-hidden="true"><use href="#m-mark"/></svg>
       <span class="brand__word">MYENG</span>
@@ -299,7 +299,7 @@
       <button type="button" data-theme-set="stone" aria-pressed="false" title="Stone theme"><i class="themeseg__sw themeseg__sw--stone" aria-hidden="true"></i>Stone</button>
       <button type="button" data-theme-set="obsidian" aria-pressed="true" title="Obsidian theme"><i class="themeseg__sw themeseg__sw--obsidian" aria-hidden="true"></i>Obsidian</button>
     </div>
-    <button class="pill pill--glass pill--cta" type="button" id="btnAudit">Export Audit Report <span class="pill__badge" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    <button class="pill pill--glass pill--cta" type="button" id="btnAudit" aria-label="Export Audit Report"><span>Export<span class="hide-sm"> Audit Report</span></span> <span class="pill__badge" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
   </header>
   <div class="app__body">
       <!-- TAB 1 — TBE -->
@@ -435,7 +435,7 @@
             <div class="chart-card">
               <div class="chart-card__head mono">
                 <span>H–Q · System resistance · Operating point</span>
-                <span class="legend"><i class="key key--v"></i>Pump @ speed <i class="key key--vd"></i>Pump 100% <i class="key key--w"></i>System <i class="key key--g"></i><span class="nt">η</span></span>
+                <span class="legend"><span class="lgi"><i class="key key--v"></i>Pump @ speed</span> <span class="lgi"><i class="key key--vd"></i>Pump 100%</span> <span class="lgi"><i class="key key--w"></i>System</span> <span class="lgi"><i class="key key--g"></i><span class="nt">η</span></span></span>
               </div>
               <div class="chart-host">
                 <svg id="hqChart" class="chart" viewBox="0 0 760 440" role="img" aria-label="Interactive pump head-capacity and system resistance chart"></svg>

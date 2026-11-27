@@ -141,7 +141,9 @@
   function renderProjects() {
     var p = currentProject();
     var parts = p.name.split(' · ');
-    $('#projName').innerHTML = parts.length > 1 ? '<b>' + esc(parts[0]) + '</b> <span>' + esc(parts.slice(1).join(' · ')) + '</span>' : '<b>' + esc(p.name) + '</b>';
+    // the duty in brackets never breaks, so "m)" can't be orphaned on a narrow screen
+    var dutyNw = function (t) { return esc(t).replace(/\(([^()]*)\)/g, '<span class="nw">($1)</span>'); };
+    $('#projName').innerHTML = parts.length > 1 ? '<b>' + esc(parts[0]) + '</b> <span>' + dutyNw(parts.slice(1).join(' · ')) + '</span>' : '<b>' + dutyNw(p.name) + '</b>';
     $('#projList').innerHTML = ws.projects.map(function (q) {
       return '<li><button type="button" class="proj__item' + (q.id === ws.active ? ' is-active' : '') + '" data-pid="' + q.id + '">' +
         '<span class="proj__iname">' + esc(q.name) + '</span><span class="proj__meta mono">' + esc(q.state.project.tag) + ' · ' + fmtDate(q.updated) + '</span></button></li>';
@@ -1447,9 +1449,19 @@
   function moveInk() {
     var on = $('.tabs [aria-selected="true"]'), ink = $('.tabs__ink');
     if (!on || !ink) return;
-    var narrow = window.innerWidth <= 1020, pad = narrow ? 0 : 18;
-    ink.style.width = Math.max(0, on.offsetWidth - pad * 2 - (narrow ? 14 : 0)) + 'px';
-    ink.style.transform = 'translateX(' + (on.offsetLeft + pad) + 'px)';
+    // exact: the ink spans the label (tab box minus its own padding)
+    var cs = getComputedStyle(on), pl = parseFloat(cs.paddingLeft) || 0, pr = parseFloat(cs.paddingRight) || 0;
+    ink.style.width = Math.max(0, on.offsetWidth - pl - pr) + 'px';
+    ink.style.transform = 'translateX(' + (on.offsetLeft + pl) + 'px)';
+  }
+  // Mobile: the header scrolls away; only the slim tab bar stays sticky, so it lives outside the header there.
+  var mqTabs = window.matchMedia('(max-width: 820px)');
+  function placeTabs() {
+    var tabs = $('.tabs'), bar = $('.app__bar');
+    if (!tabs || !bar) return;
+    if (mqTabs.matches) { if (tabs.parentNode === bar) bar.parentNode.insertBefore(tabs, bar.nextSibling); }
+    else if (tabs.parentNode !== bar) bar.insertBefore(tabs, $('.themeseg', bar));
+    moveInk();
   }
   function activateTab(name, focus, keepHash) {
     activeTab = name;
@@ -1543,6 +1555,8 @@
     });
     doc.addEventListener('keydown', function (e) { if (e.key === 'Escape' && appOpen && !$('#modal').open) backToSite(); });
     window.addEventListener('resize', moveInk);
+    if (mqTabs.addEventListener) mqTabs.addEventListener('change', placeTabs); else if (mqTabs.addListener) mqTabs.addListener(placeTabs);
+    placeTabs();
     if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(moveInk);
     $$('.tabs [role=tab]').forEach(function (b) {
       b.addEventListener('click', function () { activateTab(b.getAttribute('data-tab')); });
