@@ -33,132 +33,202 @@
 
 <a class="skip" href="#main">Skip to content</a>
 
-<!-- ============ NAVIGATION ============ -->
+<!-- =================================================================
+     VIEW A — LANDING
+     ================================================================= -->
+<div class="site" id="site">
+
 <header class="nav" id="top">
-  <div class="frame nav__inner">
+  <div class="nav__pill">
     <a class="brand" href="#top" aria-label="MYENG — back to top">
       <svg class="brand__mark" aria-hidden="true"><use href="#m-mark"/></svg>
       <span class="brand__word">MYENG</span>
     </a>
-    <nav class="nav__links" id="navLinks" aria-label="Primary">
+    <nav class="nav__links" aria-label="Primary">
       <a href="#platform">Platform</a>
-      <a href="#studio" data-tab-link="tbe">TBE Matrix</a>
-      <a href="#studio" data-tab-link="hyd">Hydraulics</a>
       <a href="#architecture">Architecture</a>
       <a href="#pricing">Pricing</a>
+      <a href="#studio" data-launch="tbe">Studio</a>
     </nav>
-    <div class="nav__actions">
-      <button class="btn btn--ink" type="button" data-launch="tbe">Launch Studio <span aria-hidden="true">→</span></button>
-      <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span class="sr">Menu</span></button>
-    </div>
+    <button class="pill pill--ink magnetic" type="button" data-launch="tbe">Launch Studio <span aria-hidden="true">→</span></button>
   </div>
 </header>
 
 <main id="main">
 
-<!-- ============ 01 HERO ============ -->
-<section class="hero" id="platform" aria-labelledby="hero-title">
-  <div class="frame">
-    <div class="index-tab reveal"><b>01 /</b><span>Platform</span></div>
-
-    <p class="hero__eyebrow mono">Technical Evaluation Platform · Pumps &amp; Rotating Equipment</p>
-    <div class="hero__head">
-    <h1 class="hero__title" id="hero-title">
-      <span class="ln ln--1"><span>Rotating Equipment</span></span>
-      <span class="ln ln--2"><span>Intelligence<i>.</i></span></span>
-    </h1>
-    <div class="hero__aside">
-      <p class="hero__lede">Technical bid evaluation, API&nbsp;610 compliance checks, and 10-year lifecycle hydraulics—built on deterministic engineering math.</p>
-      <p class="hero__meta mono">REV 04 · API 610 · ISO 5199 · AZURE AI FOUNDRY</p>
-      <div class="hero__ctas">
-        <button class="btn btn--ink btn--lg" type="button" data-launch="tbe">Launch Live Studio <span aria-hidden="true">→</span></button>
-        <button class="btn btn--line btn--lg" type="button" data-load-sample>Load 3-Bid Sample</button>
+  <!-- HERO -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap hero__text">
+      <p class="eyebrow mono reveal">MYENG · Rotating Equipment Intelligence</p>
+      <h1 class="hero__title" id="hero-title">
+        <span class="ln"><span>Rotating equipment</span></span>
+        <span class="ln"><span>procurement, engineered</span></span>
+        <span class="ln"><span>with precision<i>.</i></span></span>
+      </h1>
+      <p class="hero__sub fade">API 610 bid evaluation, hydraulics and 10-year cost — computed in your browser.</p>
+      <div class="hero__ctas fade">
+        <button class="pill pill--ink pill--lg magnetic" type="button" data-launch="tbe">Launch Studio <span aria-hidden="true">→</span></button>
+        <button class="pill pill--line pill--lg magnetic" type="button" data-load-sample>View Sample</button>
       </div>
     </div>
-    </div>
 
-    <div class="showcase reveal" id="showcase">
-      <canvas class="flowfield" id="flowfield" aria-hidden="true"></canvas>
-      <article class="panel panel--geom tilt">
-        <header class="panel__head mono"><span class="tick"></span>01 / Pump Component Geometry</header>
-        <div class="geom">
-          <img src="/assets/impeller-hero.jpg" width="1600" height="893" alt="Machined closed centrifugal impeller in brushed stainless steel, photographed on black" decoding="async">
-          <svg class="geom__cad" viewBox="0 0 1600 893" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-            <g fill="none" stroke="#8E9196" stroke-width="1.4" vector-effect="non-scaling-stroke">
-              <line x1="800" y1="70" x2="800" y2="800" stroke-dasharray="26 6 4 6"/>
-              <line x1="348" y1="96" x2="348" y2="360"/><line x1="1252" y1="96" x2="1252" y2="360"/>
-              <line x1="348" y1="112" x2="1252" y2="112"/>
-              <path d="M348 112l22-7v14zM1252 112l-22-7v14z" fill="#8E9196" stroke="none"/>
-              <path d="M1072 222 L1250 168 H1430"/>
-              <circle cx="1072" cy="222" r="5" fill="#111214"/>
-            </g>
-            <g fill="none" stroke="#E04619" stroke-width="1.4" vector-effect="non-scaling-stroke">
-              <path d="M380 400 L250 300 H90"/><circle cx="380" cy="400" r="5" fill="#111214"/>
-            </g>
-            <g font-family="JetBrains Mono, monospace" font-size="26" fill="#C9CBCF" letter-spacing="1">
-              <text x="800" y="94" text-anchor="middle">Ø 280 mm</text>
-              <text x="1262" y="156">Ø 170 EYE RING</text>
-              <text x="92" y="288" fill="#E04619">VANE TIP · β₂ 24°</text>
-              <text x="814" y="836" fill="#8E9196" font-size="22">℄ ROTATION AXIS</text>
-            </g>
-          </svg>
-        </div>
-        <footer class="panel__foot mono">
-          <span>Closed impeller · 6 vanes · CF8M</span><span>Ø280 · mm</span>
-        </footer>
-      </article>
-      <article class="panel panel--live tilt">
-        <header class="panel__head mono"><span class="tick"></span>02 / Live TBE &amp; Hydraulic Curve</header>
-        <p class="panel__case mono" id="heroCase">Sample case study · 420 m³/h @ 68 m</p>
-        <div class="readouts">
-          <div class="readout"><span class="readout__k mono">Recommended</span><span class="readout__v readout__v--name" id="heroRec">—</span></div>
-          <div class="readout"><span class="readout__k mono" id="heroTcoLabel">10-yr TCO</span><span class="readout__v mono" id="heroTco">—</span></div>
-          <div class="readout"><span class="readout__k mono">Net vs lowest CapEx</span><span class="readout__v mono" id="heroSave">—</span></div>
-          <div class="readout"><span class="readout__k mono">NPSH margin</span><span class="readout__v mono"><span id="heroNpsh">—</span> <span class="state" id="heroNpshState"></span></span></div>
-        </div>
-        <svg id="heroChart" class="chart chart--mini" viewBox="0 0 560 250" role="img" aria-label="Pump head–capacity curve and system resistance curve with operating point"></svg>
-        <footer class="panel__foot mono">
-          <span><i class="key key--v"></i>Pump H–Q <i class="key key--w"></i>System</span>
-          <button class="linkbtn" type="button" data-launch="hyd">Open in Studio →</button>
-        </footer>
-      </article>
+    <div class="wrap wrap--wide">
+      <figure class="frame-hero tilt fade fade--frame" id="heroFrame">
+        <canvas class="flowfield" id="flowfield" aria-hidden="true"></canvas>
+        <img src="/assets/impeller-hero.jpg" width="1600" height="893" alt="Machined closed centrifugal impeller in brushed stainless steel, photographed on black" decoding="async" fetchpriority="high">
+        <figcaption class="corner corner--tl mono"><i></i>API 610 · ISO 5199</figcaption>
+        <span class="corner corner--br mono" aria-hidden="true">10-YR TCO ENGINE</span>
+      </figure>
     </div>
-    <dl class="hero__spec mono" data-stagger>
-      <div><dt>Hydraulic power</dt><dd>P<sub>h</sub> = ρgQH / 3.6×10⁶</dd></div>
-      <div><dt>Pipe friction</dt><dd>Darcy–Weisbach · Swamee–Jain</dd></div>
-      <div><dt>Speed trim</dt><dd>Affinity laws Q∝N · H∝N² · P∝N³</dd></div>
-      <div><dt>Execution</dt><dd>In your browser · no server round-trip</dd></div>
-    </dl>
+  </section>
+
+  <!-- STORY -->
+  <section class="story" id="platform" aria-labelledby="story-title">
+    <div class="wrap story__grid">
+      <div class="story__intro">
+        <p class="eyebrow mono reveal">Platform</p>
+        <h2 class="h2 reveal" id="story-title">From three quotations to an award memo.</h2>
+        <p class="lead reveal">One workspace for the part of procurement that is pure engineering.</p>
+      </div>
+      <ol class="steps">
+        <li class="step reveal">
+          <span class="step__n mono">01</span>
+          <div class="step__body">
+            <h3>Compare 3 bids</h3>
+            <p>Every bid is priced over its full life — purchase, energy and maintenance — and checked against API 610.</p>
+          </div>
+          <div class="preview preview--bars" id="storyBars" aria-label="Sample lifecycle cost by bidder"></div>
+        </li>
+        <li class="step reveal">
+          <span class="step__n mono">02</span>
+          <div class="step__body">
+            <h3>Audit hydraulics</h3>
+            <p>Pump and system curves, speed trim and cavitation margin, from the same inputs as the bid matrix.</p>
+          </div>
+          <div class="preview preview--dark">
+            <svg id="storyChart" class="chart" viewBox="0 0 560 280" role="img" aria-label="Sample pump curve and system curve with operating point"></svg>
+          </div>
+        </li>
+        <li class="step reveal">
+          <span class="step__n mono">03</span>
+          <div class="step__body">
+            <h3>Export for award</h3>
+            <p>An award recommendation, supplier clarification emails and a full audit trail, ready to file.</p>
+          </div>
+          <div class="preview preview--doc" aria-hidden="true">
+            <div class="doc">
+              <span class="doc__mark"></span>
+              <span class="doc__title">Award Recommendation</span>
+              <span class="doc__line" style="width:82%"></span>
+              <span class="doc__line" style="width:64%"></span>
+              <span class="doc__call"><b id="storyAward">Bidder A (OH2-300)</b></span>
+              <span class="doc__line" style="width:90%"></span>
+              <span class="doc__line" style="width:72%"></span>
+              <span class="doc__sign"><i></i><i></i><i></i></span>
+            </div>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE STRIP -->
+  <section class="band" id="architecture" aria-labelledby="arch-title">
+    <div class="wrap">
+      <p class="eyebrow mono reveal">Architecture</p>
+      <h2 class="h2 reveal" id="arch-title">Physics in the browser. Language models only for reading.</h2>
+      <div class="band__row">
+        <div class="band__cell reveal"><h3>Deterministic physics</h3><p>Darcy–Weisbach, affinity laws and lifecycle cost run as open formulas in your browser.</p></div>
+        <div class="band__cell reveal"><h3>Azure AI Foundry &amp; Gemini, BYOK</h3><p>Quotations are parsed with your own key, sent only to your own endpoint.</p></div>
+        <div class="band__cell reveal"><h3>Zero server retention</h3><p>No backend, no cookies, no storage. Reloading the page clears everything.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="pricing" id="pricing" aria-labelledby="pricing-title">
+    <div class="wrap">
+      <p class="eyebrow mono reveal">Pricing</p>
+      <h2 class="h2 reveal" id="pricing-title">Free to evaluate. Priced per engineer.</h2>
+      <div class="plans">
+        <article class="plan tilt tilt--light reveal">
+          <h3>Sandbox</h3>
+          <p class="price">$0</p>
+          <ul>
+            <li>Full hydraulics &amp; NPSH studio</li>
+            <li>3-bid TBE with sample project</li>
+            <li>BYOK datasheet extraction</li>
+            <li>CSV export and printable reports</li>
+          </ul>
+          <button class="pill pill--line pill--block" type="button" data-launch="tbe">Open Sandbox →</button>
+        </article>
+        <article class="plan plan--feature tilt tilt--light reveal">
+          <h3>Pro Engineer</h3>
+          <p class="price">$79<small>/ month</small></p>
+          <ul>
+            <li>Managed extraction, no key needed</li>
+            <li>Unlimited saved workspaces</li>
+            <li>Automated supplier RFIs</li>
+            <li>Branded PDF audit reports</li>
+          </ul>
+          <a class="pill pill--ink pill--block" href="mailto:founders@myeng.online?subject=MYENG%20Pro%20Engineer%20%E2%80%94%20access%20request">Request access →</a>
+        </article>
+        <article class="plan tilt tilt--light reveal">
+          <h3>Enterprise / EPC</h3>
+          <p class="price">$349<small>/ month</small></p>
+          <ul>
+            <li>Multi-engineer approval workflow</li>
+            <li>Custom API 610 / ISO 5199 rulesets</li>
+            <li>Private Azure AI Foundry deployment</li>
+            <li>Everything in Pro</li>
+          </ul>
+          <a class="pill pill--line pill--block" href="mailto:founders@myeng.online?subject=MYENG%20Enterprise%20%2F%20EPC%20%E2%80%94%20discussion">Talk to the founders →</a>
+        </article>
+      </div>
+      <p class="fine reveal">Pro and Enterprise are onboarded directly by the founders.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__line">
+    <span>Amman · Jubail</span>
+    <a href="mailto:founders@myeng.online">founders@myeng.online</a>
+    <button class="linkbtn linkbtn--ink" type="button" data-legal="privacy">Privacy</button>
+    <button class="linkbtn linkbtn--ink" type="button" data-legal="terms">Terms</button>
+    <span class="foot__copy">© <span id="year">2026</span> MYENG</span>
   </div>
-</section>
+  <div class="wordmark" aria-hidden="true"><span>MYENG</span></div>
+</footer>
+</div>
 
-<!-- ============ 02 STUDIO ============ -->
-<section class="studio" id="studio" aria-labelledby="studio-title">
-  <div class="studio__frame">
-    <div class="index-tab index-tab--dark"><b>02 /</b><span>Live Engineering Studio</span></div>
-    <div class="studio__shell">
-      <div class="studio__bar">
-        <div class="studio__brand">
-          <svg class="brand__mark" aria-hidden="true"><use href="#m-mark"/></svg>
-          <span class="brand__word">MYENG</span>
-          <span class="studio__title mono" id="studio-title">Studio</span>
-        </div>
-        <div class="tabs" role="tablist" aria-label="Studio workspaces">
-          <button role="tab" id="tab-tbe" aria-controls="panel-tbe" aria-selected="true" data-tab="tbe">TBE &amp; <span id="tabHorizon">10</span>-Yr TCO Matrix</button>
-          <button role="tab" id="tab-hyd" aria-controls="panel-hyd" aria-selected="false" tabindex="-1" data-tab="hyd">Hydraulics &amp; NPSH Studio</button>
-          <button role="tab" id="tab-ai" aria-controls="panel-ai" aria-selected="false" tabindex="-1" data-tab="ai">AI Datasheet Parser (BYOK)</button>
-        </div>
-        <button class="btn btn--verm" type="button" id="btnAudit">Export Audit Report</button>
-      </div>
-
-      <div class="studio__case mono">
-        <span><b class="tag">Sample Case Study</b> <span id="caseTitle">API 610 Process Pump Package — 420 m³/h @ 68 m</span></span>
-        <span class="studio__caseactions">
-          <span class="dim">Figures are illustrative, not vendor-published data. Every field is editable.</span>
-          <button class="linkbtn" type="button" data-load-sample>Reset sample</button>
-        </span>
-      </div>
-
+<!-- =================================================================
+     VIEW B — FULL-SCREEN STUDIO  (#studio)
+     ================================================================= -->
+<section class="app" id="app" aria-label="MYENG Studio" tabindex="-1" inert>
+  <header class="app__bar">
+    <button class="app__back" type="button" id="btnBack"><span aria-hidden="true">←</span> Back to site</button>
+    <div class="app__brand">
+      <svg class="brand__mark" aria-hidden="true"><use href="#m-mark"/></svg>
+      <span class="brand__word">MYENG</span>
+      <span class="app__title mono">Studio</span>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Studio workspaces">
+      <button role="tab" id="tab-tbe" aria-controls="panel-tbe" aria-selected="true" data-tab="tbe">TBE Matrix</button>
+      <button role="tab" id="tab-hyd" aria-controls="panel-hyd" aria-selected="false" tabindex="-1" data-tab="hyd">Hydraulics &amp; NPSH</button>
+      <button role="tab" id="tab-ai" aria-controls="panel-ai" aria-selected="false" tabindex="-1" data-tab="ai">Datasheet Parser</button>
+      <span class="tabs__ink" aria-hidden="true"></span>
+    </div>
+    <button class="pill pill--verm" type="button" id="btnAudit">Export Audit Report</button>
+  </header>
+  <div class="app__case mono">
+    <span><b class="tag">Sample Case Study</b> <span id="caseTitle">API 610 Process Pump Package — 420 m³/h @ 68 m</span> · <span id="tabHorizon">10</span>-yr horizon</span>
+    <span class="app__caseactions">
+      <span class="dim">Illustrative figures · every field is editable</span>
+      <button class="linkbtn" type="button" data-load-sample>Reset sample</button>
+    </span>
+  </div>
+  <div class="app__body">
       <!-- TAB 1 — TBE -->
       <div class="tabpanel" role="tabpanel" id="panel-tbe" aria-labelledby="tab-tbe">
         <div class="tbe">
@@ -343,160 +413,9 @@
           </div>
         </div>
       </div>
-    </div>
+
   </div>
 </section>
-
-<!-- ============ 03 ARCHITECTURE ============ -->
-<section class="arch" id="architecture" aria-labelledby="arch-title">
-  <div class="frame">
-    <div class="index-tab reveal"><b>03 /</b><span>Architecture &amp; Security</span></div>
-    <div class="sec-head">
-      <h2 class="sec-title reveal" id="arch-title">Physics in the browser.<br>Language models only where language is the problem.</h2>
-      <p class="sec-lede reveal">A language model reads quotations. It never computes a head, a power or a cost. Every engineering number comes from closed-form equations you can inspect in the page source.</p>
-    </div>
-
-    <div class="schematic" data-stagger>
-      <div class="layer">
-        <span class="layer__n mono">L1</span>
-        <h3>Deterministic Physics Layer</h3>
-        <p>Darcy–Weisbach friction with Swamee–Jain, affinity laws, NPSHa, API 610 driver margins and lifecycle cost — executed in your browser. Same inputs, same outputs, every time.</p>
-        <ul class="mono">
-          <li>engine.js · pure functions</li>
-          <li>No model in the calculation path</li>
-          <li>Formulas printed in every audit report</li>
-        </ul>
-      </div>
-      <div class="flow mono" aria-hidden="true">
-        <span>Quotation text</span><i></i><span>Structured JSON</span><i></i><span>Engineer review</span><i></i><span>Physics &amp; TCO</span>
-      </div>
-      <div class="layer">
-        <span class="layer__n mono">L2</span>
-        <h3>Dual-Cloud Document Extraction</h3>
-        <p>Optional. Quotation text goes to <b>Microsoft Azure AI Foundry</b> (or an Azure OpenAI deployment) or to <b>Google Gemini</b>, with a fixed schema and the instruction to return null rather than guess. Results are cross-checked against the local parser before you insert them.</p>
-        <ul class="mono">
-          <li>Azure: api-key · your endpoint</li>
-          <li>Gemini: x-goog-api-key · your model</li>
-          <li>Local regex fallback · no key</li>
-        </ul>
-      </div>
-      <div class="layer">
-        <span class="layer__n mono">L3</span>
-        <h3>Zero-Retention EPC Privacy</h3>
-        <p>Bring your own key. There is no MYENG backend in the Sandbox: the site is static, keys stay in tab memory, and workspaces are not saved anywhere. Vendor pricing only leaves the browser if you choose a cloud parser — and then only to your own account.</p>
-        <ul class="mono">
-          <li>Static hosting · no cookies · no analytics</li>
-          <li>No localStorage for keys or bids</li>
-          <li>Reload = clean slate</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="trust reveal">
-      <div><span class="mono dim">What we do not claim</span><p>The Studio does not replace vendor-certified performance curves, witnessed tests or your company's specification. It makes the comparison faster to build and easier to check.</p></div>
-      <div><span class="mono dim">Standards referenced</span><p class="mono">API 610 · ISO 5199 · ISO 9906 (test acceptance, informative)</p></div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ 04 PRICING ============ -->
-<section class="pricing" id="pricing" aria-labelledby="pricing-title">
-  <div class="frame">
-    <div class="index-tab reveal"><b>04 /</b><span>Pricing</span></div>
-    <div class="sec-head">
-      <h2 class="sec-title reveal" id="pricing-title">Priced per engineer.<br>Free where it should be.</h2>
-      <p class="sec-lede reveal">The Sandbox is the full calculation engine. Paid plans add managed extraction, saved workspaces and team workflow. Pro and Enterprise are currently onboarded directly by the founders.</p>
-    </div>
-
-    <div class="plans" data-stagger>
-      <article class="plan tilt tilt--light">
-        <header><h3>Sandbox</h3><p class="price"><span class="mono">$0</span></p></header>
-        <ul>
-          <li>Full Hydraulics &amp; NPSH Studio</li>
-          <li>Sample 3-bid TBE projects</li>
-          <li>BYOK datasheet extraction (Azure / Gemini)</li>
-          <li>CSV export, RFI drafts, printable reports</li>
-        </ul>
-        <button class="btn btn--line btn--block" type="button" data-launch="tbe">Open Sandbox →</button>
-      </article>
-      <article class="plan plan--feature tilt tilt--light">
-        <span class="plan__flag mono">Most engineers</span>
-        <header><h3>Pro Engineer</h3><p class="price"><span class="mono">$79</span> <small>/ month</small></p></header>
-        <ul>
-          <li>Managed Azure / Gemini extraction — no key needed</li>
-          <li>Unlimited saved TBE workspaces</li>
-          <li>Automated supplier RFI drafts</li>
-          <li>Branded PDF audit reports</li>
-        </ul>
-        <a class="btn btn--ink btn--block" href="mailto:founders@myeng.online?subject=MYENG%20Pro%20Engineer%20%E2%80%94%20access%20request">Request Pro access →</a>
-      </article>
-      <article class="plan tilt tilt--light">
-        <header><h3>Enterprise / EPC</h3><p class="price"><span class="mono">$349</span> <small>/ month</small></p></header>
-        <ul>
-          <li>Multi-engineer review &amp; approval workflow</li>
-          <li>Custom spec rulesets — API 610, ISO 5199, site standards</li>
-          <li>Private Azure AI Foundry deployment in your tenant</li>
-          <li>Everything in Pro</li>
-        </ul>
-        <a class="btn btn--line btn--block" href="mailto:founders@myeng.online?subject=MYENG%20Enterprise%20%2F%20EPC%20%E2%80%94%20discussion">Talk to the founders →</a>
-      </article>
-    </div>
-
-    <div class="roi reveal">
-      <div class="roi__head">
-        <h3>10-Year Energy Impact</h3>
-        <p>Pure arithmetic on your own assumptions. Pumps bought in year <i>k</i> run for the remaining years of the window. No benchmark claims.</p>
-      </div>
-      <div class="roi__body">
-        <div class="roi__ctl">
-          <div id="roiSliders"></div>
-          <div class="fields fields--inline">
-            <label class="field"><span>Baseline η</span><input type="number" step="0.5" min="10" max="95" data-roi="baseEff"><em>%</em></label>
-            <label class="field"><span>Hours</span><input type="number" step="100" min="100" max="8760" data-roi="hours"><em>h/yr</em></label>
-            <label class="field"><span>Tariff</span><input type="number" step="0.01" min="0" data-roi="tariff"><em>$/kWh</em></label>
-            <label class="field"><span>Grid EF</span><input type="number" step="0.01" min="0" data-roi="ef"><em>kg/kWh</em></label>
-          </div>
-        </div>
-        <div class="roi__out" id="roiOut"></div>
-      </div>
-      <p class="roi__formula mono" id="roiFormula"></p>
-    </div>
-  </div>
-</section>
-</main>
-
-<!-- ============ 05 FOOTER ============ -->
-<footer class="foot" id="contact">
-  <div class="frame">
-    <div class="index-tab reveal"><b>05 /</b><span>Company</span></div>
-    <div class="foot__grid" data-stagger>
-      <div class="foot__brand">
-        <a class="brand" href="#top" aria-label="MYENG — back to top">
-          <svg class="brand__mark" aria-hidden="true"><use href="#m-mark"/></svg>
-          <span class="brand__word">MYENG</span>
-        </a>
-        <p>Rotating equipment intelligence. Technical bid evaluation and lifecycle hydraulics for rotating equipment engineers in EPC, operator and consulting organisations.</p>
-      </div>
-      <div class="foot__col">
-        <span class="mono dim">Offices</span>
-        <p>Amman, Jordan<br>Jubail, Saudi Arabia</p>
-      </div>
-      <div class="foot__col">
-        <span class="mono dim">Contact</span>
-        <p><a href="mailto:founders@myeng.online">founders@myeng.online</a><br><a href="https://myeng.online/">myeng.online</a></p>
-      </div>
-      <div class="foot__col">
-        <span class="mono dim">Legal</span>
-        <p><button class="linkbtn linkbtn--ink" type="button" data-legal="privacy">Privacy Policy</button><br><button class="linkbtn linkbtn--ink" type="button" data-legal="terms">Terms of Service</button></p>
-      </div>
-    </div>
-    <div class="foot__base mono">
-      <span>© <span id="year">2026</span> MYENG</span>
-      <span>REV 04 · Static build · No cookies</span>
-      <a href="#top">Back to top ↑</a>
-    </div>
-  </div>
-</footer>
 
 <dialog class="modal" id="modal" aria-labelledby="modalTitle">
   <div class="modal__bar">

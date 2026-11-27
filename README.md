@@ -3,12 +3,13 @@
 Static site for MYENG, Rotating Equipment Intelligence. Served by GitHub Pages (`CNAME` → `myeng.online`). No build step, no backend.
 
 ```
-index.html            Landing page and Live Engineering Studio
+index.html            Two views: landing page (/) and full-screen Studio (#studio/tbe|hydraulics|parser)
 404.html              Copy of index.html (GitHub Pages fallback); keep in sync
 favicon.svg           MYENG mark
 assets/css/myeng.css  Visual system (Ceramic Stone / Obsidian / Vermilion)
 assets/js/engine.js   Deterministic engineering math: pure functions, no DOM
-assets/js/app.js      UI: TBE matrix, hydraulics studio, BYOK parser, reports
+assets/js/app.js      UI: router, TBE matrix, hydraulics studio, BYOK parser, reports
+assets/impeller-hero.jpg  Hero photograph
 ```
 
 After editing `index.html`, run `cp index.html 404.html`.
