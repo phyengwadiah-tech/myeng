@@ -44,7 +44,7 @@
       <a href="#pricing">Pricing</a>
       <a href="#studio" data-launch="tbe">Studio</a>
     </nav>
-    <button class="pill pill--ink magnetic" type="button" data-launch="tbe">Launch Studio <span aria-hidden="true">→</span></button>
+    <button class="pill pill--ink pill--cta magnetic" type="button" data-launch="tbe">Launch Studio <span class="pill__badge" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
   </div>
 </header>
 
@@ -56,12 +56,12 @@
       <p class="eyebrow mono reveal">01 / Rotating Equipment Intelligence</p>
       <h1 class="hero__title" id="hero-title">
         <span class="ln"><span>Rotating equipment</span></span>
-        <span class="ln"><span>procurement, engineered</span></span>
-        <span class="ln"><span>with precision<i>.</i></span></span>
+        <span class="ln"><span>procurement, <em class="tone">engineered</em></span></span>
+        <span class="ln"><span><em class="tone">with precision</em><i>.</i></span></span>
       </h1>
       <p class="hero__sub fade">API 610 bid evaluation, hydraulics and 10-year cost — computed in your browser.</p>
       <div class="hero__ctas fade">
-        <button class="pill pill--ink pill--lg magnetic" type="button" data-launch="tbe">Launch Studio <span aria-hidden="true">→</span></button>
+        <button class="pill pill--ink pill--lg pill--cta magnetic" type="button" data-launch="tbe">Launch Studio <span class="pill__badge" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
         <button class="pill pill--line pill--lg magnetic" type="button" data-load-sample>View Sample</button>
       </div>
     </div>
@@ -71,7 +71,19 @@
         <canvas class="flowfield" id="flowfield" aria-hidden="true"></canvas>
         <img src="/assets/impeller-hero.jpg" width="1600" height="893" alt="Machined closed centrifugal impeller in brushed stainless steel, photographed on black" decoding="async" fetchpriority="high">
         <figcaption class="corner corner--tl mono"><i></i>API 610 · ISO 5199</figcaption>
-        <span class="corner corner--br mono" aria-hidden="true">10-YR TCO ENGINE</span>
+        <div class="stage-ui">
+          <div class="tpill-stack">
+            <span class="tpill mono"><span class="tpill__k">10-yr savings</span><b id="heroSave">—</b></span>
+            <span class="tpill mono"><span class="tpill__k">NPSH margin</span><b id="heroNpsh">—</b><em class="tpill__ok" id="heroNpshState">SAFE</em></span>
+          </div>
+          <div class="trim" role="group" aria-label="Pump speed for the sample case">
+            <div class="trim__seg">
+              <button type="button" data-trim="100" aria-pressed="false">100% Rated</button>
+              <button type="button" data-trim="92" aria-pressed="true">92% VFD Trim</button>
+            </div>
+            <span class="tpill mono tpill--live"><i class="tpill__dot" aria-hidden="true"></i><b id="heroKw">—</b><span class="tpill__k" id="heroQ">—</span></span>
+          </div>
+        </div>
       </figure>
     </div>
   </section>
@@ -81,7 +93,7 @@
     <div class="wrap">
       <header class="story__head">
         <p class="eyebrow mono reveal">02 / Platform</p>
-        <h2 class="h2 reveal" id="story-title">From three quotations to an award memo.</h2>
+        <h2 class="h2 reveal" id="story-title">From three quotations <span class="tone">to an award memo.</span></h2>
         <p class="lead reveal">One workspace for the part of procurement that is pure engineering.</p>
       </header>
       <div class="scrolly">
@@ -120,7 +132,7 @@
   <section class="band" id="architecture" aria-labelledby="arch-title" data-rail="03">
     <div class="wrap">
       <p class="eyebrow mono reveal">03 / Architecture</p>
-      <h2 class="h2 reveal" id="arch-title">Physics in the browser. Language models only for reading.</h2>
+      <h2 class="h2 reveal" id="arch-title">Physics in the browser. <span class="tone">Language models only for reading.</span></h2>
 
       <div class="flowline reveal" aria-label="Data flow">
         <div class="node"><span class="mono">Input</span><b>Vendor quotation</b><em>Pasted or dropped .txt / .csv</em></div>
@@ -151,7 +163,7 @@
   <section class="pricing" id="pricing" aria-labelledby="pricing-title" data-rail="04">
     <div class="wrap">
       <p class="eyebrow mono reveal">04 / Pricing</p>
-      <h2 class="h2 reveal" id="pricing-title">Free to evaluate. Pilots for engineering teams.</h2>
+      <h2 class="h2 reveal" id="pricing-title">Free to evaluate. <span class="tone">Pilots for engineering teams.</span></h2>
       <div class="plans reveal">
         <article class="plan">
           <h3>Sandbox</h3>
@@ -196,7 +208,7 @@
   </section>
 </main>
 
-<footer class="foot" id="contact" data-rail="05">
+<footer class="foot foot--dark" id="contact" data-rail="05">
   <div class="wrap foot__line">
     <span class="foot__brand"><svg class="foot__mark" aria-hidden="true"><use href="#m-mark"/></svg><b>MYENG</b><span>Amman, Jordan · Jubail, Saudi Arabia</span></span>
     <a href="mailto:founders@myeng.online">founders@myeng.online</a>
@@ -205,7 +217,10 @@
     <span class="foot__copy">© <span id="year">2026</span> MYENG</span>
   </div>
   <p class="wrap foot__tm">API 610 is a standard of the American Petroleum Institute. Azure is a trademark of Microsoft; Gemini of Google. MYENG is not affiliated with or endorsed by them.</p>
-  <div class="wordmark" aria-hidden="true"><span class="wordmark__in"><svg class="wordmark__m"><use href="#m-mark"/></svg>YENG</span></div>
+  <div class="wordmark" id="wordmark" aria-hidden="true">
+    <span class="wordmark__in wordmark__base"><svg class="wordmark__m"><use href="#m-mark"/></svg>YENG</span>
+    <span class="wordmark__in wordmark__lit"><svg class="wordmark__m"><use href="#m-mark"/></svg>YENG</span>
+  </div>
 </footer>
 </div>
 
@@ -264,7 +279,7 @@
       <button role="tab" id="tab-ai" aria-controls="panel-ai" aria-selected="false" tabindex="-1" data-tab="ai">Datasheet Parser</button>
       <span class="tabs__ink" aria-hidden="true"></span>
     </div>
-    <button class="pill pill--verm" type="button" id="btnAudit">Export Audit Report</button>
+    <button class="pill pill--glass pill--cta" type="button" id="btnAudit">Export Audit Report <span class="pill__badge" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
   </header>
   <div class="app__case mono">
     <span class="tag" id="caseTag">Illustrative</span>
@@ -397,6 +412,12 @@
               </header>
               <div class="twin__stage">
                 <canvas id="twinCanvas" role="img" aria-label="Cross-section of the active pump train"></canvas>
+                <div class="twin__pills" aria-hidden="true">
+                  <span class="tglass tglass--tl" id="tpFlow"></span>
+                  <span class="tglass tglass--tr" id="tpDis"></span>
+                  <span class="tglass tglass--bl" id="tpNpsh"></span>
+                  <span class="tglass tglass--br" id="tpSpeed"></span>
+                </div>
               </div>
             </section>
             <div class="chart-card">
@@ -420,17 +441,19 @@
             <div class="parser__head">
               <h3 class="ctl-h mono">Raw vendor quotation text</h3>
               <div class="parser__head-btns">
-                <button class="btn btn--ghost btn--sm" type="button" id="btnUpload">Upload .txt / .csv</button>
-                <input type="file" id="fileQuote" accept=".txt,.csv,text/plain,text/csv" hidden>
-                <button class="btn btn--ghost btn--sm" type="button" id="btnSampleQuote">Insert Sample Raw Vendor Quote</button>
+                <button class="btn btn--ghost btn--sm" type="button" id="btnSampleQuote">Insert sample quote</button>
                 <button class="btn btn--ghost btn--sm" type="button" id="btnClearQuote">Clear</button>
               </div>
             </div>
             <div class="drop" id="dropZone">
+              <button class="upzone" type="button" id="btnUpload">
+                <span class="upzone__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 15V4m0 0-4 4m4-4 4 4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <span class="upzone__t"><b>Drop a .txt or .csv quotation</b><span>or click to browse · read locally, max 1 MB</span></span>
+              </button>
+              <input type="file" id="fileQuote" accept=".txt,.csv,text/plain,text/csv" hidden>
               <textarea id="quoteText" class="mono" spellcheck="false" aria-label="Raw vendor quotation text" placeholder="Paste the technical/commercial section of a pump quotation — or drop a .txt / .csv file here…"></textarea>
               <div class="drop__overlay mono" aria-hidden="true"><span>Drop .txt or .csv to load</span></div>
             </div>
-            <p class="note">Text is processed in this tab. With the local parser nothing leaves your browser. With a cloud provider, the text is sent directly from your browser to the endpoint you configure, under your account and that provider's data terms.</p>
           </div>
 
           <div class="parser__cfg">
@@ -442,10 +465,10 @@
             </div>
 
             <div class="engine-cfg" data-engine="local">
-              <p class="note">Deterministic regular-expression parser. Recognises common quotation phrasing for price, BEP efficiency and flow, NPSH3/NPSHr, MAWP, material class, motor rating and efficiency, maintenance allowance and lead time. No key required.</p>
+              <p class="engine-line">Deterministic regex parser · no key · nothing leaves the browser.</p>
             </div>
             <div class="engine-cfg" data-engine="azure" hidden>
-              <p class="note azure-note"><b>Microsoft Azure AI Foundry</b> model inference or an <b>Azure OpenAI</b> deployment, called directly from this tab with your credentials.</p>
+              <p class="engine-line"><b>Azure AI Foundry</b> or an <b>Azure OpenAI</b> deployment, called from this tab with your credentials.</p>
               <div class="fields">
                 <label class="field field--wide"><span>API surface</span>
                   <select id="azMode">
@@ -476,14 +499,21 @@
                 <label class="field field--wide" id="gmCustomWrap" hidden><span>Model id</span><input type="text" id="gmCustom" placeholder="gemini-…" autocomplete="off"></label>
                 <label class="field field--wide"><span>API key</span><input type="password" id="gmKey" placeholder="Held in page memory only" autocomplete="off"></label>
               </div>
-              <p class="note">Unpaid Gemini API tiers may use submitted content to improve Google products. Use a paid key or the local parser for confidential pricing.</p>
             </div>
-            <p class="keynote mono"><span class="dot"></span>Keys live in JavaScript memory for this tab only — never written to storage, cookies or any MYENG server. Reloading the page clears them.</p>
             <div class="parser__run">
-              <button class="btn btn--verm" type="button" id="btnParse">Parse datasheet</button>
+              <button class="pill pill--glass pill--cta" type="button" id="btnParse">Parse datasheet <span class="pill__badge" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
               <button class="linkbtn" type="button" id="btnForgetKeys">Forget keys</button>
             </div>
             <p class="status mono" id="parseStatus" role="status" aria-live="polite">Ready.</p>
+            <details class="info">
+              <summary>Privacy &amp; API details</summary>
+              <ul>
+                <li>Text is processed in this tab. With the local parser nothing leaves your browser. With a cloud provider, the text is sent directly from your browser to the endpoint you configure, under your account and that provider's data terms.</li>
+                <li>Deterministic regular-expression parser. Recognises common quotation phrasing for price, BEP efficiency and flow, NPSH3/NPSHr, MAWP, material class, motor rating and efficiency, maintenance allowance and lead time. No key required.</li>
+                <li>Keys live in JavaScript memory for this tab only — never written to storage, cookies or any MYENG server. Reloading the page clears them.</li>
+                <li>Unpaid Gemini API tiers may use submitted content to improve Google products. Use a paid key or the local parser for confidential pricing.</li>
+              </ul>
+            </details>
           </div>
 
           <div class="parser__out">

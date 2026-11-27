@@ -1,35 +1,34 @@
 /*!
- * MYENG equipment twin renderer — REV 06
- * Draws a schematic cross-section of an end-suction centrifugal pump train
- * (suction → impeller → volute → discharge, shaft → motor → VFD) and animates it.
- * It performs no engineering math: every number it shows or reacts to is
- * computed by engine.js and passed in through update().
+ * MYENG equipment twin renderer — REV 09
+ * Studio-lit brushed-steel cross-section of an end-suction pump train
+ * (suction → impeller → volute → discharge, shaft → motor → VFD).
+ * It performs no engineering math: every value it reacts to is computed by
+ * engine.js and passed in through update(). Readouts are HTML, not canvas text.
  */
 (function (root) {
   'use strict';
 
-  var C = { ink: '#111214', carbon: '#181A1E', hair: '#282B31', muted: '#8E9196', stone: '#F4F3EF', alu: '#E2E1DC', verm: '#E04619' };
   var TAU = Math.PI * 2;
+  var VERM = '#E04619';
   var lerp = function (a, b, t) { return a + (b - a) * t; };
   var clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
 
-  function setupCanvas(cv, logicalW, logicalH) {
+  function setupCanvas(cv, W, H) {
     var ctx = cv.getContext('2d');
-    var o = { cv: cv, ctx: ctx, W: logicalW, H: logicalH, scale: 1, ox: 0, oy: 0, cssW: 0 };
+    var o = { cv: cv, ctx: ctx, W: W, H: H, scale: 1, ox: 0, oy: 0, dpr: 1, cssW: 0 };
     o.resize = function () {
       var r = cv.getBoundingClientRect();
       if (!r.width) return false;
-      var dpr = Math.min(window.devicePixelRatio || 1, 2);
-      cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+      o.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cv.width = Math.round(r.width * o.dpr); cv.height = Math.round(r.height * o.dpr);
       o.cssW = r.width;
-      o.scale = Math.min(r.width / logicalW, r.height / logicalH);
-      o.ox = (r.width - logicalW * o.scale) / 2; o.oy = (r.height - logicalH * o.scale) / 2;
-      ctx.setTransform(dpr * o.scale, 0, 0, dpr * o.scale, dpr * o.ox, dpr * o.oy);
+      o.scale = Math.min(r.width / W, r.height / H);
+      o.ox = (r.width - W * o.scale) / 2; o.oy = (r.height - H * o.scale) / 2;
+      o.apply(ctx);
       return true;
     };
-    o.clear = function () {
-      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.restore();
-    };
+    o.apply = function (c) { c.setTransform(o.dpr * o.scale, 0, 0, o.dpr * o.scale, o.dpr * o.ox, o.dpr * o.oy); };
+    o.clear = function () { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.restore(); };
     return o;
   }
 
@@ -47,221 +46,298 @@
     };
   }
 
-  function vanes(ctx, cx, cy, r1, r2, phi, n, width, stroke) {
-    var beta = 25 * Math.PI / 180;
-    for (var k = 0; k < n; k++) {
-      var th0 = phi + k * TAU / n;
-      ctx.beginPath();
-      for (var i = 0; i <= 18; i++) {
-        var r = r1 + (r2 - r1) * i / 18, th = th0 - Math.log(r / r1) / Math.tan(beta);
-        var x = cx + r * Math.cos(th), y = cy + r * Math.sin(th);
-        if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
-      }
-      ctx.lineWidth = width; ctx.strokeStyle = stroke; ctx.lineCap = 'round'; ctx.stroke();
+  /* ---------- material helpers (brushed steel under a top-left key light) ---------- */
+  function steelV(c, y0, y1) {   // horizontal cylinder / pipe shell
+    var g = c.createLinearGradient(0, y0, 0, y1);
+    g.addColorStop(0, '#24272D'); g.addColorStop(0.16, '#6E747E'); g.addColorStop(0.3, '#B4B9C0');
+    g.addColorStop(0.42, '#7A8089'); g.addColorStop(0.7, '#3A3E45'); g.addColorStop(1, '#16181C');
+    return g;
+  }
+  function steelR(c, x, y, r) {  // disc / casing, specular offset toward the light
+    var g = c.createRadialGradient(x - r * 0.42, y - r * 0.5, r * 0.05, x, y, r * 1.08);
+    g.addColorStop(0, '#C3C7CD'); g.addColorStop(0.22, '#8A9099'); g.addColorStop(0.55, '#4A4F57'); g.addColorStop(0.85, '#262A30'); g.addColorStop(1, '#17191D');
+    return g;
+  }
+  function cavity(c, x, y, r) {  // wetted interior
+    var g = c.createRadialGradient(x, y, r * 0.1, x, y, r);
+    g.addColorStop(0, '#14171B'); g.addColorStop(1, '#08090B');
+    return g;
+  }
+  function shadowOn(c, blur, oy) { c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = blur; c.shadowOffsetX = 0; c.shadowOffsetY = oy; }
+  function shadowOff(c) { c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0; }
+  function rrect(c, x, y, w, h, r) {
+    c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+  function brushed(c, x0, y0, w, h, vertical) {   // faint machining lines
+    c.save(); c.globalAlpha = 0.06; c.strokeStyle = '#FFFFFF'; c.lineWidth = 0.6;
+    for (var i = 0; i < (vertical ? w : h); i += 3) {
+      c.beginPath();
+      if (vertical) { c.moveTo(x0 + i, y0); c.lineTo(x0 + i, y0 + h); } else { c.moveTo(x0, y0 + i); c.lineTo(x0 + w, y0 + i); }
+      c.stroke();
     }
+    c.restore();
   }
 
   /* ------------------------------------------------------------------
      Full pump-train twin (hydraulics tab)
      ------------------------------------------------------------------ */
   function pump(cv, opts) {
-    var W = 1000, H = 440, cvs = setupCanvas(cv, W, H), ctx = cvs.ctx;
+    var W = 1000, H = 460, cvs = setupCanvas(cv, W, H), ctx = cvs.ctx;
     var reduced = !!(opts && opts.reduced);
-    var P = { x: 430, y: 250 };                 // pump centre (shaft axis)
-    var R2 = 92, EYE = 28, VIN = 102, VOUT0 = 118, VOUT1 = 152;
-    var D_Y = P.y - (VIN + VOUT1) / 2;           // discharge pipe centreline
-    var tgt = null, cur = null, phi = 0, t = 0, parts = [], bubbles = [];
+    var P = { x: 420, y: 250 };
+    var R2 = 82, EYE = 26, VIN = 92, VOUT0 = 104, VOUT1 = 134, RIM = 14;
+    var D_Y = P.y - (VIN + VOUT1) / 2, THROAT = (VOUT1 - VIN) / 2;
+    var SX1 = P.x - VOUT1 - RIM - 6;            // suction flange x
+    var tgt = null, cur = null, phi = 0, t = 0, parts = [], rings = [];
+    var layer = document.createElement('canvas'), lctx = layer.getContext('2d'), layerKey = '';
 
-    function voutAt(a) { return VOUT0 + (VOUT1 - VOUT0) * (a / TAU); } // a: angle travelled from cutwater
-    function defaults(d) {
-      return {
-        speed: d.speed, flow: d.flow, vSuc: d.vSuc, vDis: d.vDis, hs: clamp(d.Ds / 303 * 26, 12, 40), hd: clamp(d.D / 254 * 20, 9, 32),
-        margin: d.margin, load: clamp(d.shaftKw / Math.max(d.motorKw, 1), 0, 1.2)
-      };
+    function vout(a) { return VOUT0 + (VOUT1 - VOUT0) * (a / TAU); }
+    function vols(r0) {   // spiral path from the cutwater (top) clockwise, radius offset r0
+      var pts = [];
+      for (var a = 0; a <= TAU + 1e-6; a += 0.04) { var rr = vout(a) + r0, aa = a - Math.PI / 2; pts.push([P.x + rr * Math.cos(aa), P.y + rr * Math.sin(aa)]); }
+      return pts;
     }
-    function update(d) {
-      tgt = d;
-      var nv = defaults(d);
-      if (!cur) cur = nv; else cur.target = nv;
-      cur.target = nv;
-      if (reduced || !api.running()) { snapCur(); draw(); }
+
+    /* static metal, cached per geometry */
+    function drawStatic(c, hs, hd) {
+      c.clearRect(-10, -10, W + 20, H + 20);
+      // studio backdrop
+      var bg = c.createRadialGradient(300, 70, 20, 420, 230, 720);
+      bg.addColorStop(0, '#1A1D22'); bg.addColorStop(0.45, '#121418'); bg.addColorStop(1, '#0C0D10');
+      c.fillStyle = bg; c.fillRect(0, 0, W, H);
+      var floor = c.createLinearGradient(0, H * 0.72, 0, H); floor.addColorStop(0, 'rgba(255,255,255,0)'); floor.addColorStop(1, 'rgba(255,255,255,.025)');
+      c.fillStyle = floor; c.fillRect(0, H * 0.72, W, H * 0.28);
+      // contact shadows
+      c.save(); c.filter = 'blur(14px)'; c.fillStyle = 'rgba(0,0,0,.55)';
+      c.beginPath(); c.ellipse(P.x, P.y + VOUT1 + RIM + 18, 170, 16, 0, 0, TAU); c.fill();
+      c.beginPath(); c.ellipse(765, P.y + 78, 150, 12, 0, 0, TAU); c.fill();
+      c.beginPath(); c.ellipse(930, P.y + 82, 60, 10, 0, 0, TAU); c.fill();
+      c.restore();
+
+      // suction pipe (cutaway)
+      var t = 8;
+      shadowOn(c, 18, 8); c.fillStyle = steelV(c, P.y - hs - t, P.y + hs + t); c.fillRect(30, P.y - hs - t, SX1 - 30, (hs + t) * 2); shadowOff(c);
+      c.fillStyle = cavity(c, (30 + SX1) / 2, P.y, hs * 3); c.fillRect(30, P.y - hs, SX1 - 30, hs * 2);
+      c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(30, P.y - hs + 0.5); c.lineTo(SX1, P.y - hs + 0.5); c.moveTo(30, P.y + hs - 0.5); c.lineTo(SX1, P.y + hs - 0.5); c.stroke();
+      c.fillStyle = steelV(c, P.y - hs - t - 10, P.y + hs + t + 10); rrect(c, 26, P.y - hs - t - 10, 8, (hs + t + 10) * 2, 2); c.fill();
+      c.fillStyle = steelV(c, P.y - hs - t - 12, P.y + hs + t + 12); rrect(c, SX1 - 4, P.y - hs - t - 12, 10, (hs + t + 12) * 2, 2); c.fill();
+
+      // drive train behind the casing: shaft, bearing frame, coupling, motor, fan cowl, VFD
+      c.fillStyle = steelV(c, P.y - 9, P.y + 9); c.fillRect(P.x, P.y - 9, 270, 18);
+      shadowOn(c, 20, 10);
+      c.fillStyle = steelV(c, P.y - 34, P.y + 34); rrect(c, 548, P.y - 34, 92, 68, 8); c.fill();
+      c.fillStyle = steelV(c, P.y - 22, P.y + 22); rrect(c, 650, P.y - 22, 18, 44, 3); c.fill();
+      c.fillStyle = steelV(c, P.y - 60, P.y + 60); rrect(c, 676, P.y - 60, 176, 120, 14); c.fill();
+      shadowOff(c);
+      for (var fx = 690; fx < 840; fx += 9) {   // cooling fins
+        c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(fx, P.y - 54, 3, 108);
+        c.fillStyle = 'rgba(255,255,255,.06)'; c.fillRect(fx + 3, P.y - 54, 1, 108);
+      }
+      c.fillStyle = steelV(c, P.y - 50, P.y + 50);
+      c.beginPath(); c.moveTo(852, P.y - 50); c.lineTo(876, P.y - 38); c.lineTo(876, P.y + 38); c.lineTo(852, P.y + 50); c.closePath(); c.fill();
+      // VFD cabinet: graphite with glass display (load bar is dynamic)
+      shadowOn(c, 22, 10);
+      var cab = c.createLinearGradient(892, 0, 972, 0); cab.addColorStop(0, '#24272D'); cab.addColorStop(0.5, '#2E3238'); cab.addColorStop(1, '#1B1D22');
+      c.fillStyle = cab; rrect(c, 892, P.y - 66, 80, 132, 10); c.fill(); shadowOff(c);
+      c.strokeStyle = 'rgba(255,255,255,.08)'; c.lineWidth = 1; rrect(c, 892.5, P.y - 65.5, 79, 131, 10); c.stroke();
+      c.fillStyle = '#0B0C0E'; rrect(c, 902, P.y - 54, 60, 34, 5); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.1)'; rrect(c, 902.5, P.y - 53.5, 59, 33, 5); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,.05)'; for (var vl = 0; vl < 5; vl++) c.fillRect(904, P.y + 8 + vl * 8, 56, 2);
+      c.strokeStyle = 'rgba(155,156,163,.35)'; c.setLineDash([3, 4]); c.beginPath(); c.moveTo(876, P.y); c.lineTo(892, P.y); c.stroke(); c.setLineDash([]);
+
+      // discharge pipe shell
+      var dx0 = P.x, taper = P.x + 72;
+      shadowOn(c, 18, 8);
+      c.fillStyle = steelV(c, D_Y - THROAT - t, D_Y + THROAT + t);
+      c.beginPath(); c.moveTo(dx0, D_Y - THROAT - t); c.lineTo(taper, D_Y - hd - t); c.lineTo(W - 30, D_Y - hd - t); c.lineTo(W - 30, D_Y + hd + t); c.lineTo(taper, D_Y + hd + t); c.lineTo(dx0, D_Y + THROAT + t); c.closePath(); c.fill();
+      shadowOff(c);
+      c.fillStyle = steelV(c, D_Y - hd - t - 12, D_Y + hd + t + 12); rrect(c, taper - 2, D_Y - hd - t - 12, 10, (hd + t + 12) * 2, 2); c.fill();
+      c.fillStyle = steelV(c, D_Y - hd - t - 10, D_Y + hd + t + 10); rrect(c, W - 34, D_Y - hd - t - 10, 8, (hd + t + 10) * 2, 2); c.fill();
+
+      // volute: machined rim + wetted channel
+      var outer = vols(RIM), inner = vols(0);
+      shadowOn(c, 26, 12);
+      c.beginPath(); outer.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); });
+      c.lineTo(P.x + 6, D_Y - THROAT - t); c.lineTo(P.x - 20, P.y - VOUT0 - RIM); c.closePath();
+      c.fillStyle = steelR(c, P.x, P.y, VOUT1 + RIM); c.fill(); shadowOff(c);
+      c.save(); c.clip(); c.globalAlpha = 0.05; c.strokeStyle = '#fff'; c.lineWidth = 0.6;
+      for (var br = VIN; br < VOUT1 + RIM; br += 3) { c.beginPath(); c.arc(P.x, P.y, br, 0, TAU); c.stroke(); }
+      c.restore();
+      c.beginPath(); inner.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); });
+      c.lineTo(P.x + 4, D_Y - THROAT); c.lineTo(P.x - 18, P.y - VOUT0); c.closePath();
+      c.fillStyle = cavity(c, P.x, P.y, VOUT1); c.fill();
+      c.beginPath(); inner.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); });
+      c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1; c.stroke();
+      // discharge wetted channel (drawn after the volute so the throat is continuous)
+      c.fillStyle = cavity(c, (dx0 + W) / 2, D_Y, 300);
+      c.beginPath(); c.moveTo(dx0 - 4, D_Y - THROAT); c.lineTo(taper, D_Y - hd); c.lineTo(W - 30, D_Y - hd); c.lineTo(W - 30, D_Y + hd); c.lineTo(taper, D_Y + hd); c.lineTo(dx0 - 4, D_Y + THROAT); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.14)';
+      c.beginPath(); c.moveTo(dx0, D_Y - THROAT + 0.5); c.lineTo(taper, D_Y - hd + 0.5); c.lineTo(W - 30, D_Y - hd + 0.5);
+      c.moveTo(dx0, D_Y + THROAT - 0.5); c.lineTo(taper, D_Y + hd - 0.5); c.lineTo(W - 30, D_Y + hd - 0.5); c.stroke();
+      // back plate seat around the impeller
+      c.beginPath(); c.arc(P.x, P.y, VIN, 0, TAU); c.strokeStyle = 'rgba(255,255,255,.08)'; c.stroke();
     }
-    function snapCur() { if (cur && cur.target) Object.keys(cur.target).forEach(function (k) { cur[k] = cur.target[k]; }); }
+    function ensureLayer() {
+      var key = cvs.cv.width + 'x' + cvs.cv.height + ':' + Math.round(cur.hs) + ':' + Math.round(cur.hd);
+      if (key === layerKey) return;
+      layer.width = cvs.cv.width; layer.height = cvs.cv.height;
+      cvs.apply(lctx); drawStatic(lctx, cur.hs, cur.hd); layerKey = key;
+    }
+
+    /* dynamic parts */
+    function drawImpeller(c) {
+      c.save();
+      c.beginPath(); c.arc(P.x, P.y, R2 + 4, 0, TAU); c.fillStyle = steelR(c, P.x, P.y, R2 + 4); c.fill();
+      c.beginPath(); c.arc(P.x, P.y, R2 - 2, 0, TAU); c.fillStyle = 'rgba(8,9,11,.82)'; c.fill();
+      var beta = 25 * Math.PI / 180;
+      for (var k = 0; k < 6; k++) {
+        var th0 = phi + k * TAU / 6, a = [], b = [];
+        for (var i = 0; i <= 16; i++) {
+          var f = i / 16, r = EYE + (R2 - 2 - EYE) * f, th = th0 - Math.log(r / EYE) / Math.tan(beta);
+          var w = lerp(6.5, 3, f) / r;
+          a.push([P.x + r * Math.cos(th), P.y + r * Math.sin(th)]);
+          b.push([P.x + r * Math.cos(th + w), P.y + r * Math.sin(th + w)]);
+        }
+        c.beginPath(); a.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); });
+        for (var j = b.length - 1; j >= 0; j--) c.lineTo(b[j][0], b[j][1]);
+        c.closePath();
+        var mid = a[8], vg = c.createLinearGradient(mid[0] - 30, mid[1] - 30, mid[0] + 30, mid[1] + 30);
+        vg.addColorStop(0, '#C9CDD3'); vg.addColorStop(0.5, '#8A9099'); vg.addColorStop(1, '#3E434A');
+        c.fillStyle = vg; c.fill(); c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 0.8; c.stroke();
+      }
+      // fixed key light sweeping across the rotating vanes
+      var sp = c.createRadialGradient(P.x - 30, P.y - 40, 4, P.x - 10, P.y - 20, R2 + 10);
+      sp.addColorStop(0, 'rgba(255,255,255,.22)'); sp.addColorStop(0.5, 'rgba(255,255,255,.05)'); sp.addColorStop(1, 'rgba(255,255,255,0)');
+      c.beginPath(); c.arc(P.x, P.y, R2 + 4, 0, TAU); c.fillStyle = sp; c.fill();
+      // eye, hub, bore
+      c.beginPath(); c.arc(P.x, P.y, EYE, 0, TAU); c.fillStyle = cavity(c, P.x, P.y, EYE); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 1; c.stroke();
+      c.beginPath(); c.arc(P.x, P.y, 12, 0, TAU); c.fillStyle = steelR(c, P.x, P.y, 12); c.fill();
+      c.beginPath(); c.arc(P.x, P.y, 4.5, 0, TAU); c.fillStyle = '#0A0B0D'; c.fill();
+      c.restore();
+    }
 
     function spawn(anywhere) {
-      var p = { st: 0, o: Math.random() * 2 - 1, x: anywhere ? 20 + Math.random() * (P.x - 170) : 10 - Math.random() * 40, rho: 0, ch: Math.random() * TAU, a: 0, k: 0, life: 0 };
-      if (anywhere && Math.random() < 0.45) { p.st = 4; p.x = P.x + Math.random() * (W - P.x); }
+      var p = { st: 0, o: Math.random() * 2 - 1, x: anywhere ? 30 + Math.random() * (SX1 - 30) : 26 - Math.random() * 30, rho: 0, ch: Math.random() * TAU, a: 0, k: 0, life: 0, tr: [] };
+      if (anywhere && Math.random() < 0.45) { p.st = 4; p.x = P.x + Math.random() * (W - 30 - P.x); }
       return p;
     }
-    function ensureParts() {
-      var n = Math.round(clamp(50 + 230 * (cur.flow / 600), 40, 280));
-      while (parts.length < n) parts.push(spawn(parts.length < n * 0.9 && !parts.ran));
-      parts.ran = true;
-      if (parts.length > n) parts.length = n;
+    function posOf(p) {
+      var c = cur;
+      if (p.st === 0) return [p.x, P.y + p.o * c.hs * 0.8];
+      if (p.st === 1) { return [lerp(SX1, P.x + p.o * EYE * 0.45, p.k), lerp(P.y + p.o * c.hs * 0.8, P.y + p.o * EYE * 0.55, p.k)]; }
+      if (p.st === 2) { var r = EYE + (R2 - EYE) * p.rho, th = phi + p.ch - Math.log(r / EYE) / Math.tan(25 * Math.PI / 180) + 0.26; return [P.x + r * Math.cos(th), P.y + r * Math.sin(th)]; }
+      if (p.st === 3) { var ro = vout(p.a), rr = lerp(VIN + 4, ro - 4, (p.o + 1) / 2), aa = p.a - Math.PI / 2; return [P.x + rr * Math.cos(aa), P.y + rr * Math.sin(aa)]; }
+      var tp = clamp((p.x - P.x) / 72, 0, 1), hw = lerp(THROAT - 3, c.hd * 0.82, tp);
+      return [p.x, D_Y + p.o * hw];
     }
     function step(dt) {
       var c = cur, g = c.target || c;
       ['speed', 'flow', 'vSuc', 'vDis', 'hs', 'hd', 'margin', 'load'].forEach(function (k) { c[k] = lerp(c[k], g[k], 0.08 * dt); });
-      var w = 0.075 * c.speed * dt;            // visual angular speed (rad/frame) ∝ N
-      phi += w; t += dt;
-      ensureParts();
+      phi += 0.075 * c.speed * dt; t += dt;
+      var n = Math.round(clamp(40 + 130 * (c.flow / 600), 30, 170));
+      while (parts.length < n) parts.push(spawn(!parts.seeded));
+      parts.seeded = true; if (parts.length > n) parts.length = n;
       var vs = clamp(c.vSuc * 1.5, 0.35, 7) * dt, vd = clamp(c.vDis * 1.5, 0.35, 8) * dt;
       for (var i = 0; i < parts.length; i++) {
         var p = parts[i];
         p.life += dt;
-        if (p.st === 0) { p.x += vs; if (p.x >= P.x - VOUT1 - 6) { p.st = 1; p.k = 0; } }
-        else if (p.st === 1) { p.k += 0.06 * dt; if (p.k >= 1) { p.st = 2; p.rho = 0; } }
-        else if (p.st === 2) { p.rho += (0.018 + 0.03 * c.speed) * dt; if (p.rho >= 1) { p.st = 3; var ang = phi + p.ch - Math.log((EYE + (R2 - EYE)) / EYE) / Math.tan(25 * Math.PI / 180); p.a = ((ang + Math.PI / 2) % TAU + TAU) % TAU; } }
-        else if (p.st === 3) { p.a += (vd / 120) * 0.9; if (p.a >= TAU) { p.st = 4; p.x = P.x; } }
-        else if (p.st === 4) { p.x += vd; if (p.x > W + 10) parts[i] = spawn(false); }
+        if (p.st === 0) { p.x += vs; if (p.x >= SX1) { p.st = 1; p.k = 0; p.tr.length = 0; } }
+        else if (p.st === 1) { p.k += 0.06 * dt; if (p.k >= 1) { p.st = 2; p.rho = 0; p.tr.length = 0; } }
+        else if (p.st === 2) { p.rho += (0.018 + 0.03 * c.speed) * dt; if (p.rho >= 1) { p.st = 3; var ang = phi + p.ch - Math.log(R2 / EYE) / Math.tan(25 * Math.PI / 180); p.a = ((ang + Math.PI / 2) % TAU + TAU) % TAU; } }
+        else if (p.st === 3) { p.a += (vd / 110) * 0.9; if (p.a >= TAU) { p.st = 4; p.x = P.x; } }
+        else if (p.st === 4) { p.x += vd; if (p.x > W - 32) { parts[i] = spawn(false); continue; } }
+        if (p.st === 1) continue;
+        var q = posOf(p);
+        p.tr.push(q[0], q[1]); if (p.tr.length > 22) p.tr.splice(0, 2);
       }
-      // cavitation bubbles nucleate at the eye when margin < 1.0 m
       if (c.margin < 1) {
-        var rate = clamp(1 - c.margin, 0.15, 1.6) * 0.9 * dt;
-        while (Math.random() < rate && bubbles.length < 70) {
+        var rate = clamp(1 - c.margin, 0.35, 1.6) * 1.3 * dt;
+        while (Math.random() < rate && rings.length < 60) {
           rate -= 1;
-          var a = Math.PI * (0.55 + Math.random() * 0.9), r = EYE * (0.7 + Math.random() * 1.3);
-          bubbles.push({ x: P.x + r * Math.cos(a), y: P.y + r * Math.sin(a), life: 0, max: 22 + Math.random() * 24, rm: 1.6 + Math.random() * 3 });
+          var a = Math.PI * (0.55 + Math.random() * 0.9), rr = EYE * (0.75 + Math.random() * 1.1);
+          rings.push({ x: P.x + rr * Math.cos(a), y: P.y + rr * Math.sin(a), life: 0, max: 30 + Math.random() * 24, rm: 4 + Math.random() * 6 });
         }
       }
-      for (var b = bubbles.length - 1; b >= 0; b--) { bubbles[b].life += dt; bubbles[b].x += 0.15 * dt; if (bubbles[b].life >= bubbles[b].max) bubbles.splice(b, 1); }
+      for (var b = rings.length - 1; b >= 0; b--) { rings[b].life += dt; if (rings[b].life >= rings[b].max) rings.splice(b, 1); }
     }
-
-    function posOf(p) {
-      var c = cur;
-      if (p.st === 0) return [p.x, P.y + p.o * c.hs * 0.85, 1];
-      if (p.st === 1) { var x0 = P.x - VOUT1 - 6, k = p.k; return [lerp(x0, P.x + p.o * EYE * 0.5, k), lerp(P.y + p.o * c.hs * 0.85, P.y + p.o * EYE * 0.6, k), 0.35]; }
-      if (p.st === 2) { var r = EYE + (R2 - EYE) * p.rho, th = phi + p.ch - Math.log(r / EYE) / Math.tan(25 * Math.PI / 180) + 0.26; return [P.x + r * Math.cos(th), P.y + r * Math.sin(th), 0.9]; }
-      if (p.st === 3) { var ro = voutAt(p.a), rr = lerp(VIN + 4, ro - 4, (p.o + 1) / 2), aa = p.a - Math.PI / 2; return [P.x + rr * Math.cos(aa), P.y + rr * Math.sin(aa), 0.9]; }
-      var taper = clamp((p.x - P.x) / 70, 0, 1), hw = lerp((VOUT1 - VIN) / 2 - 3, c.hd * 0.85, taper);
-      return [p.x, D_Y + p.o * hw, 1];
-    }
-
-    function label(txt, x, y, color, align, bg) {
-      var fs = 11 / cvs.scale;
-      ctx.font = '500 ' + fs.toFixed(1) + 'px "JetBrains Mono", monospace';
-      ctx.textAlign = align || 'left'; ctx.textBaseline = 'middle';
-      if (bg) {
-        var wd = ctx.measureText(txt).width, pad = 5 / cvs.scale, hh = fs + 8 / cvs.scale;
-        var bx = align === 'right' ? x - wd - pad : align === 'center' ? x - wd / 2 - pad : x - pad;
-        ctx.fillStyle = 'rgba(17,18,20,.92)'; ctx.fillRect(bx, y - hh / 2, wd + pad * 2, hh);
-        ctx.strokeStyle = bg; ctx.lineWidth = 1 / cvs.scale; ctx.strokeRect(bx, y - hh / 2, wd + pad * 2, hh);
+    function drawFlow(c, impellerPass) {
+      c.lineCap = 'round';
+      for (var i = 0; i < parts.length; i++) {
+        if ((parts[i].st === 2) !== impellerPass || parts[i].st === 1) continue;
+        var tr = parts[i].tr, n = tr.length / 2;
+        if (n < 3) continue;
+        var vis = 1, fade = Math.min(1, parts[i].life / 14);
+        for (var k = 1; k < n; k++) {
+          var f = k / (n - 1);
+          c.strokeStyle = 'rgba(236,235,230,' + (0.62 * f * vis * fade).toFixed(3) + ')';
+          c.lineWidth = 0.4 + 1.7 * f;
+          c.beginPath(); c.moveTo(tr[(k - 1) * 2], tr[(k - 1) * 2 + 1]); c.lineTo(tr[k * 2], tr[k * 2 + 1]); c.stroke();
+        }
       }
-      ctx.fillStyle = color; ctx.fillText(txt, x, y);
     }
-    function pin(ax, ay, x, y, key, val, align, alert) {
-      var col = alert ? C.verm : C.muted;
-      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(x, y); ctx.strokeStyle = col; ctx.lineWidth = 1 / cvs.scale; ctx.stroke();
-      ctx.beginPath(); ctx.arc(ax, ay, 2.6, 0, TAU); ctx.fillStyle = col; ctx.fill();
-      var fs = 11 / cvs.scale, fv = 13 / cvs.scale;
-      ctx.font = '500 ' + fs.toFixed(1) + 'px "JetBrains Mono", monospace'; var wk = ctx.measureText(key + '  ').width;
-      ctx.font = '600 ' + fv.toFixed(1) + 'px "JetBrains Mono", monospace'; var wv = ctx.measureText(val).width;
-      var wd = wk + wv, padx = 8 / cvs.scale, hh = fv + 12 / cvs.scale;
-      var bx = align === 'right' ? x - wd - padx * 2 : align === 'center' ? x - wd / 2 - padx : x;
-      var by = y + (y < ay ? -hh : 0);
-      ctx.fillStyle = 'rgba(17,18,20,.94)'; ctx.fillRect(bx, by, wd + padx * 2, hh);
-      ctx.strokeStyle = alert ? C.verm : C.hair; ctx.lineWidth = 1 / cvs.scale; ctx.strokeRect(bx, by, wd + padx * 2, hh);
-      ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-      ctx.font = '500 ' + fs.toFixed(1) + 'px "JetBrains Mono", monospace'; ctx.fillStyle = alert ? C.stone : C.muted; ctx.fillText(key, bx + padx, by + hh / 2);
-      ctx.font = '600 ' + fv.toFixed(1) + 'px "JetBrains Mono", monospace'; ctx.fillStyle = C.stone; ctx.fillText(val, bx + padx + wk, by + hh / 2);
+    function drawAlerts(c) {
+      if (rings.length) {
+        c.save(); c.shadowColor = VERM; c.shadowBlur = 10;
+        rings.forEach(function (r) {
+          var k = r.life / r.max, rad = r.rm * (k < 0.7 ? k / 0.7 : 1 + (k - 0.7) * 0.6);
+          c.beginPath(); c.arc(r.x, r.y, Math.max(0.4, rad), 0, TAU);
+          c.strokeStyle = 'rgba(224,70,25,' + (0.95 * (1 - k * 0.8)).toFixed(3) + ')'; c.lineWidth = 1.6; c.stroke(); c.fillStyle = 'rgba(224,70,25,' + (0.12 * (1 - k)).toFixed(3) + ')'; c.fill();
+        });
+        c.restore();
+      }
+      if (tgt && tgt.erosion) {
+        var pulse = 0.55 + 0.45 * Math.sin(t * 0.1), hd = cur.hd, taper = P.x + 72;
+        c.save(); c.shadowColor = VERM; c.shadowBlur = 14; c.strokeStyle = 'rgba(224,70,25,' + (0.5 + 0.4 * pulse).toFixed(3) + ')'; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(taper, D_Y - hd + 1); c.lineTo(W - 30, D_Y - hd + 1); c.moveTo(taper, D_Y + hd - 1); c.lineTo(W - 30, D_Y + hd - 1); c.stroke();
+        c.restore();
+      }
     }
-    function leader(x1, y1, x2, y2, color) {
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke();
-      ctx.beginPath(); ctx.arc(x1, y1, 2.5, 0, TAU); ctx.fillStyle = color; ctx.fill();
+    function drawDynamicDrive(c) {
+      // VFD load bar + status lamp, motor fan glint
+      var lb = clamp(cur.load, 0, 1);
+      c.fillStyle = 'rgba(255,255,255,.06)'; rrect(c, 908, P.y - 41, 48, 6, 3); c.fill();
+      var lg = c.createLinearGradient(908, 0, 956, 0); lg.addColorStop(0, '#9B9CA3'); lg.addColorStop(1, '#ECEBE6');
+      c.fillStyle = cur.load > 1 ? VERM : lg; rrect(c, 908, P.y - 41, Math.max(6, 48 * lb), 6, 3); c.fill();
+      c.beginPath(); c.arc(956, P.y + 52, 2.5, 0, TAU); c.fillStyle = cur.load > 1 ? VERM : 'rgba(236,235,230,.55)'; c.fill();
+      c.save(); c.translate(864, P.y); c.globalAlpha = 0.35;
+      for (var fb = 0; fb < 4; fb++) { var fa = phi * 0.7 + fb * TAU / 4; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(fa) * 7, Math.sin(fa) * 30); c.strokeStyle = '#0B0C0E'; c.lineWidth = 2; c.stroke(); }
+      c.restore();
     }
 
     function draw() {
       if (!cur || !tgt) return;
-      var c = cur, wide = cvs.cssW >= 640;
+      ensureLayer();
       cvs.clear();
-      // drafting grid
-      ctx.strokeStyle = 'rgba(40,43,49,.38)'; ctx.lineWidth = 1;
-      for (var gx = 0; gx <= W; gx += 80) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
-      for (var gy = 0; gy <= H; gy += 80) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
-      // axis centreline
-      ctx.setLineDash([18, 5, 3, 5]); ctx.strokeStyle = C.hair; ctx.beginPath(); ctx.moveTo(10, P.y); ctx.lineTo(W - 10, P.y); ctx.stroke(); ctx.setLineDash([]);
-
-      // suction pipe
-      var hs = c.hs, sx1 = P.x - VOUT1 - 6;
-      ctx.fillStyle = 'rgba(24,26,30,.9)'; ctx.fillRect(0, P.y - hs - 6, sx1, (hs + 6) * 2);
-      ctx.strokeStyle = C.alu; ctx.lineWidth = 1.3;
-      [[-hs, -hs - 6], [hs, hs + 6]].forEach(function (yy) { ctx.beginPath(); ctx.moveTo(0, P.y + yy[0]); ctx.lineTo(sx1, P.y + yy[0]); ctx.stroke(); ctx.strokeStyle = C.muted; ctx.beginPath(); ctx.moveTo(0, P.y + yy[1]); ctx.lineTo(sx1, P.y + yy[1]); ctx.stroke(); ctx.strokeStyle = C.alu; });
-      ctx.fillStyle = C.alu; ctx.fillRect(sx1 - 6, P.y - hs - 14, 6, (hs + 14) * 2); // flange
-
-      // shaft, bearing frame, coupling, motor, VFD
-      ctx.fillStyle = C.carbon; ctx.strokeStyle = C.muted; ctx.lineWidth = 1.2;
-      ctx.fillRect(P.x, P.y - 6, 240, 12); ctx.strokeRect(P.x, P.y - 6, 240, 12);
-      ctx.fillRect(560, P.y - 30, 82, 60); ctx.strokeRect(560, P.y - 30, 82, 60);
-      ctx.fillStyle = C.ink; ctx.fillRect(668, P.y - 18, 16, 36); ctx.strokeRect(668, P.y - 18, 16, 36);
-      ctx.fillStyle = C.carbon; ctx.fillRect(690, P.y - 58, 170, 116); ctx.strokeStyle = C.alu; ctx.strokeRect(690, P.y - 58, 170, 116);
-      ctx.strokeStyle = C.hair; for (var fx = 702; fx < 852; fx += 12) { ctx.beginPath(); ctx.moveTo(fx, P.y - 50); ctx.lineTo(fx, P.y + 50); ctx.stroke(); }
-      ctx.fillStyle = C.ink; ctx.strokeStyle = C.muted; ctx.beginPath(); ctx.moveTo(860, P.y - 46); ctx.lineTo(884, P.y - 34); ctx.lineTo(884, P.y + 34); ctx.lineTo(860, P.y + 46); ctx.closePath(); ctx.fill(); ctx.stroke();
-      // motor fan ticks rotate with speed
-      ctx.save(); ctx.translate(872, P.y); for (var fb = 0; fb < 6; fb++) { var fa = phi * 0.6 + fb * TAU / 6; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(fa) * 9, Math.sin(fa) * 26); ctx.strokeStyle = C.hair; ctx.stroke(); } ctx.restore();
-      // VFD cabinet with load bar
-      ctx.fillStyle = C.carbon; ctx.strokeStyle = C.alu; ctx.fillRect(910, P.y - 62, 78, 124); ctx.strokeRect(910, P.y - 62, 78, 124);
-      ctx.fillStyle = C.ink; ctx.fillRect(920, P.y - 52, 58, 26);
-      var lb = clamp(c.load, 0, 1);
-      ctx.fillStyle = C.hair; ctx.fillRect(922, P.y + 40, 54, 6);
-      ctx.fillStyle = c.load > 1 ? C.verm : C.stone; ctx.fillRect(922, P.y + 40, 54 * lb, 6);
-      ctx.fillStyle = C.hair; for (var ln = 0; ln < 3; ln++) ctx.fillRect(922, P.y - 44 + ln * 7, 34 - ln * 8, 2);
-      ctx.beginPath(); ctx.moveTo(884, P.y); ctx.lineTo(910, P.y); ctx.strokeStyle = C.muted; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
-
-      // discharge pipe
-      var hd = c.hd, dx0 = P.x, taperEnd = P.x + 70;
-      ctx.fillStyle = 'rgba(24,26,30,.9)';
-      ctx.beginPath(); ctx.moveTo(dx0, D_Y - (VOUT1 - VIN) / 2); ctx.lineTo(taperEnd, D_Y - hd); ctx.lineTo(W, D_Y - hd); ctx.lineTo(W, D_Y + hd); ctx.lineTo(taperEnd, D_Y + hd); ctx.lineTo(dx0, D_Y + (VOUT1 - VIN) / 2); ctx.closePath(); ctx.fill();
-      var ero = tgt.erosion;
-      var wallCol = ero ? 'rgba(224,70,25,' + (0.55 + 0.45 * Math.sin(t * 0.12)).toFixed(3) + ')' : C.alu;
-      ctx.lineWidth = ero ? 2 : 1.3; ctx.strokeStyle = wallCol;
-      ctx.beginPath(); ctx.moveTo(dx0, D_Y - (VOUT1 - VIN) / 2); ctx.lineTo(taperEnd, D_Y - hd); ctx.lineTo(W, D_Y - hd); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(dx0, D_Y + (VOUT1 - VIN) / 2); ctx.lineTo(taperEnd, D_Y + hd); ctx.lineTo(W, D_Y + hd); ctx.stroke();
-      ctx.lineWidth = 1; ctx.fillStyle = C.alu; ctx.fillRect(taperEnd, D_Y - hd - 8, 6, (hd + 8) * 2);
-
-      // volute casing (spiral) and impeller
-      ctx.beginPath();
-      for (var a = 0; a <= TAU + 0.001; a += 0.05) { var rr = voutAt(a), aa = a - Math.PI / 2; var px = P.x + rr * Math.cos(aa), py = P.y + rr * Math.sin(aa); if (a) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
-      ctx.lineTo(P.x, D_Y - (VOUT1 - VIN) / 2);
-      ctx.fillStyle = 'rgba(24,26,30,.96)'; ctx.fill();
-      ctx.strokeStyle = C.alu; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.beginPath(); ctx.arc(P.x, P.y, VIN, 0, TAU); ctx.strokeStyle = C.muted; ctx.lineWidth = 1; ctx.stroke();
-      ctx.beginPath(); ctx.arc(P.x, P.y, R2 + 3, 0, TAU); ctx.fillStyle = C.carbon; ctx.fill(); ctx.strokeStyle = C.alu; ctx.lineWidth = 1.2; ctx.stroke();
-      vanes(ctx, P.x, P.y, EYE, R2, phi, 6, 4.5, 'rgba(226,225,220,.74)');
-      vanes(ctx, P.x, P.y, EYE, R2, phi, 6, 2.2, C.hair);
-      ctx.beginPath(); ctx.arc(P.x, P.y, EYE, 0, TAU); ctx.fillStyle = C.ink; ctx.fill(); ctx.strokeStyle = C.muted; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
-      ctx.beginPath(); ctx.arc(P.x, P.y, 11, 0, TAU); ctx.fillStyle = C.carbon; ctx.fill(); ctx.strokeStyle = C.alu; ctx.stroke();
-
-      // streamlines (particles)
-      for (var i = 0; i < parts.length; i++) {
-        var q = posOf(parts[i]), fade = Math.min(1, parts[i].life / 12);
-        ctx.fillStyle = 'rgba(226,225,220,' + (0.75 * q[2] * fade).toFixed(3) + ')';
-        ctx.fillRect(q[0] - 1.6, q[1] - 0.7, 3.2, 1.4);
-      }
-      // cavitation micro-bubbles
-      for (var b = 0; b < bubbles.length; b++) {
-        var bb = bubbles[b], k = bb.life / bb.max, r = bb.rm * (k < 0.72 ? k / 0.72 : Math.max(0, (1 - k) / 0.28));
-        ctx.beginPath(); ctx.arc(bb.x, bb.y, Math.max(0.3, r), 0, TAU);
-        ctx.strokeStyle = 'rgba(224,70,25,' + (0.95 - 0.3 * k).toFixed(3) + ')'; ctx.lineWidth = 1.1; ctx.stroke();
-        ctx.fillStyle = 'rgba(224,70,25,.16)'; ctx.fill();
-      }
-
-      // four pinned readouts: rpm & VFD, flow, NPSH margin, discharge velocity
-      if (wide) {
-        var cavOn = c.margin < 1, eroOn = !!tgt.erosion;
-        pin(P.x - EYE * 0.7, P.y + EYE * 0.7, 210, P.y + 128, cavOn ? 'CAVITATION ONSET · NPSH' : 'NPSH MARGIN', (tgt.margin >= 0 ? '+' : '') + tgt.margin.toFixed(2) + ' m', 'center', cavOn);
-        pin(110, P.y - c.hs - 2, 110, P.y - c.hs - 34, 'FLOW Q', Math.round(tgt.flow).toLocaleString('en-US') + ' m³/h', 'left', false);
-        pin(860, D_Y - c.hd, 860, D_Y - c.hd - 30, eroOn ? 'EROSION RISK · v' : 'DISCHARGE v', tgt.vDis.toFixed(2) + ' m/s', 'right', eroOn);
-        pin(775, P.y + 58, 775, P.y + 96, 'SPEED', Math.round(tgt.rpm).toLocaleString('en-US') + ' rpm · VFD ' + tgt.speedPct + '%', 'center', false);
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(layer, 0, 0); ctx.restore();
+      drawFlow(ctx, false);
+      drawImpeller(ctx);
+      drawFlow(ctx, true);
+      drawAlerts(ctx);
+      drawDynamicDrive(ctx);
+    }
+    function initial(d) {
+      return { speed: d.speed, flow: d.flow, vSuc: d.vSuc, vDis: d.vDis, hs: clamp(d.Ds / 303 * 30, 14, 40), hd: clamp(d.D / 254 * 22, 10, 30), margin: d.margin, load: clamp(d.shaftKw / Math.max(d.motorKw, 1), 0, 1.2) };
+    }
+    function update(d) {
+      tgt = d;
+      var nv = initial(d);
+      if (!cur) { cur = nv; cur.target = nv; } else cur.target = nv;
+      if (reduced || !api.running()) {
+        Object.keys(nv).forEach(function (k) { cur[k] = nv[k]; });
+        if (reduced && !parts.length) for (var i = 0; i < 90; i++) step(1);
+        if (cvs.cssW || cvs.resize()) draw();
       }
     }
 
     var api = loop(function (dt) { step(dt); draw(); });
     var baseStart = api.start;
-    api.start = function () { if (reduced) { draw(); return; } cvs.resize(); baseStart(); };
+    api.start = function () { cvs.resize(); layerKey = ''; if (reduced) { draw(); return; } baseStart(); };
     api.update = update;
-    api.resize = function () { if (cvs.resize()) draw(); };
-    api.frame = function () { cvs.resize(); draw(); };
-    api.bubbles = function () { return bubbles.length; };
+    api.resize = function () { if (cvs.resize()) { layerKey = ''; draw(); } };
+    api.bubbles = function () { return rings.length; };
     if (window.ResizeObserver) new ResizeObserver(function () { api.resize(); }).observe(cv);
     return api;
   }
@@ -273,11 +349,17 @@
     var cvs = setupCanvas(cv, 100, 100), ctx = cvs.ctx, phi = 0, w = 0.04, wt = 0.04, reduced = !!(opts && opts.reduced);
     function draw() {
       cvs.clear();
-      ctx.beginPath(); ctx.arc(50, 50, 46, 0, TAU); ctx.strokeStyle = C.hair; ctx.lineWidth = 1.2; ctx.stroke();
-      ctx.beginPath(); ctx.arc(50, 50, 40, 0, TAU); ctx.fillStyle = C.carbon; ctx.fill(); ctx.strokeStyle = C.muted; ctx.lineWidth = 1; ctx.stroke();
-      vanes(ctx, 50, 50, 12, 39, phi, 6, 3.4, 'rgba(226,225,220,.74)');
-      ctx.beginPath(); ctx.arc(50, 50, 12, 0, TAU); ctx.fillStyle = C.ink; ctx.fill(); ctx.strokeStyle = C.muted; ctx.stroke();
-      ctx.beginPath(); ctx.arc(50, 50, 4, 0, TAU); ctx.fillStyle = C.verm; ctx.fill();
+      ctx.beginPath(); ctx.arc(50, 50, 46, 0, TAU); ctx.fillStyle = steelR(ctx, 50, 50, 46); ctx.fill();
+      ctx.beginPath(); ctx.arc(50, 50, 40, 0, TAU); ctx.fillStyle = '#0B0C0E'; ctx.fill();
+      var beta = 25 * Math.PI / 180;
+      for (var k = 0; k < 6; k++) {
+        var th0 = phi + k * TAU / 6;
+        ctx.beginPath();
+        for (var i = 0; i <= 14; i++) { var r = 12 + 27 * i / 14, th = th0 - Math.log(r / 12) / Math.tan(beta); var x = 50 + r * Math.cos(th), y = 50 + r * Math.sin(th); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+        ctx.strokeStyle = '#A9AEB6'; ctx.lineWidth = 3.4; ctx.lineCap = 'round'; ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(50, 50, 12, 0, TAU); ctx.fillStyle = steelR(ctx, 50, 50, 12); ctx.fill();
+      ctx.beginPath(); ctx.arc(50, 50, 3.5, 0, TAU); ctx.fillStyle = VERM; ctx.fill();
     }
     var api = loop(function (dt) { w = lerp(w, wt, 0.06 * dt); phi += w * dt; draw(); });
     var baseStart = api.start;
