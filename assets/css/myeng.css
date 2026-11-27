@@ -1501,3 +1501,65 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
   .tabs button { padding: 0 13px; }
   .app__title { display: none; }
 }
+
+/* =====================================================================
+   REV 11 — precision pass
+   ===================================================================== */
+.nw { white-space: nowrap; }
+
+/* 1 · hero: CTAs sit closer to the subtitle */
+.hero__ctas { margin-top: 20px; }
+.frame-hero { margin-top: 32px; }
+@media (max-height: 860px) and (min-width: 861px) { .frame-hero { margin-top: 26px; } }
+
+/* 2 · scrollytelling */
+.sstep { min-height: 56vh; }
+.stage { top: calc(50vh - 240px); height: 480px; }
+.sframe { align-items: center; padding: 24px 28px; }
+@media (min-width: 861px) { .sv--parse { grid-template-columns: minmax(0, .9fr) 24px minmax(0, 1.6fr); } }
+.sv--parse, .sv--doc { margin-top: 0; }
+.sv__raw span { white-space: normal; }
+.sv__raw span b { font-weight: 400; color: var(--stone); }
+.sv__tbl th .nt { text-transform: none; font-size: 1.15em; letter-spacing: 0; }
+.sv__dev { display: block; width: fit-content; margin-top: 4px; font-style: normal; font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: #F0835F; border: 1px solid rgba(224,70,25,.6); border-radius: 999px; padding: 1px 6px; white-space: nowrap; }
+.sv__chips li { color: var(--stone); border-color: rgba(244,243,239,.3); background: rgba(244,243,239,.04); }
+@media (max-width: 860px) { .sstep { min-height: 0; } }
+
+/* 3 · pricing: tab clears the corner tick */
+.plan__tab { left: 18px; }
+
+/* 4 · sliders: label + value above a slim 6px precision rail */
+.rs { margin-bottom: 14px; }
+.rs__track { height: auto; overflow: visible; border-radius: 0; background: none; box-shadow: none; }
+.rs__track:hover, .rs__track:focus-within { background: none; box-shadow: none; }
+.app[data-theme="stone"] .rs__track { box-shadow: none; }
+.rs__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 26px; }
+.rs__label, .rs__val { position: static; transform: none; text-shadow: none; }
+.rs__label { pointer-events: auto; min-width: 0; white-space: normal; }
+.rs__val { flex: none; }
+.rs__num { padding: 3px 4px; }
+.rs__rail { position: relative; height: 22px; }
+.rs__rail::before { content: ""; position: absolute; left: 0; right: 0; top: 8px; height: 6px; border-radius: 999px; background: rgba(var(--s-hl),.09); box-shadow: inset 0 1px 1px rgba(0,0,0,.35); }
+.app[data-theme="stone"] .rs__rail::before { background: rgba(17,18,20,.08); box-shadow: inset 0 1px 1px rgba(17,18,20,.12); }
+.rs__fill { top: 8px; bottom: auto; height: 6px; border-radius: 999px; background: linear-gradient(90deg, rgba(224,70,25,.55), #E04619); }
+.rs__thumb { top: 3px; width: 4px; height: 16px; border-radius: 2px; left: calc(var(--pf) * (100% - 4px)); z-index: 2; pointer-events: none; }
+.rs input[type=range] { z-index: 3; }
+.rs__rail:focus-within::before { box-shadow: inset 0 1px 1px rgba(0,0,0,.35), 0 0 0 2px rgba(224,70,25,.35); }
+
+/* 5 · cost composition: energy vs maintenance read apart in both themes */
+.app .seg-energy, .app .bar--rec .seg-energy, .app .tco-bars__legend i.seg-energy { background: rgba(var(--s-text-rgb),.55); }
+.app .seg-maint, .app .tco-bars__legend i.seg-maint { background: repeating-linear-gradient(135deg, rgba(var(--s-text-rgb),.42) 0 1.5px, rgba(var(--s-text-rgb),.06) 1.5px 4.5px); outline: 0; }
+.app[data-theme="stone"] .seg-energy, .app[data-theme="stone"] .bar--rec .seg-energy, .app[data-theme="stone"] .tco-bars__legend i.seg-energy { background: rgba(17,18,20,.42); }
+
+/* 6 · hydraulics KPIs: badge inline with the title, values share a baseline */
+.xcard__top { flex-wrap: nowrap; align-items: flex-start; min-height: 32px; }
+.xcard__top .kpi__k { flex: 1 1 auto; min-width: 0; line-height: 1.35; }
+.xcard__top .state { flex: none; white-space: nowrap; }
+.xcard__v { font-size: clamp(16px, 1.3vw, 19px); }
+
+/* 7 · TBE status, CSV pill, currency cells */
+.app .matrix .st--rec { background: var(--s-text); border-color: var(--s-text); color: var(--s-card); }
+.app .matrix .st--bad { background: transparent; border-color: rgba(224,70,25,.5); color: #E8825F; }
+.app[data-theme="stone"] .matrix .st--bad { color: #B4431F; border-color: rgba(224,70,25,.45); }
+.app .deliverables__csv { margin-left: 0; font-size: inherit; text-decoration: none; padding-left: 18px; padding-right: 18px; }
+.matrix input.money { text-align: right; font-variant-numeric: tabular-nums; }
