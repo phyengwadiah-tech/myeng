@@ -299,6 +299,7 @@
     renderHyd();
     renderTwin();
     renderStrip();
+    syncSelects();
     renderStory();
     saveSoon();
     syncSliderLabels();
@@ -496,6 +497,7 @@
     state.bids.forEach(function (b, i) { h += '<td data-col="' + i + '"><ul class="devlist" data-dev="' + i + '"></ul></td>'; });
     h += '</tr></tbody>';
     t.innerHTML = h;
+    enhanceSelects(t);
     var rows = $$('#matrix tbody tr:not(.grp)').length;
     $('#fullCount').textContent = '(' + rows + ' rows)';
     setMatrixView(matrixView);
@@ -640,6 +642,7 @@
   };
   Chart.prototype.draw = function () {
     var c = this.cur, o = this.o, g = this.geom(), p = g.p, id = this.svg.id;
+    var T = o.themed ? chartPalette() : { grid: '#282B31', axis: '#8E9196', label: '#8E9196', sys: '#F4F3EF', bg: '#111214', ink: '#F4F3EF', soft: 'rgba(244,243,239,.35)', pill: '#111214', pillB: '#282B31', eff: '#8E9196' };
     var out = [];
     var x0 = p.l, x1 = g.W - p.r, y0 = g.H - p.b, y1 = p.t;
     out.push('<defs><clipPath id="' + id + '-clip"><rect x="' + x0 + '" y="' + y1 + '" width="' + (x1 - x0) + '" height="' + (y0 - y1) + '"/></clipPath></defs>');
@@ -647,24 +650,24 @@
     var qs = niceStep(c.qMax / (o.mini ? 4 : 6)), hs = niceStep(c.hMax / (o.mini ? 4 : 5));
     for (var q = 0; q <= c.qMax + 1e-6; q += qs) {
       var X = g.x(q).toFixed(1);
-      out.push('<line x1="' + X + '" x2="' + X + '" y1="' + y1 + '" y2="' + y0 + '" stroke="#282B31" stroke-width="1"/>');
-      out.push('<text x="' + X + '" y="' + (y0 + 16) + '" fill="#8E9196" font-size="' + (o.mini ? 10 : 10.5) + '" text-anchor="middle">' + num(q) + '</text>');
+      out.push('<line x1="' + X + '" x2="' + X + '" y1="' + y1 + '" y2="' + y0 + '" stroke="' + T.grid + '" stroke-width="1"/>');
+      out.push('<text x="' + X + '" y="' + (y0 + 16) + '" fill="' + T.label + '" font-size="' + (o.mini ? 10 : 10.5) + '" text-anchor="middle">' + num(q) + '</text>');
     }
     for (var hh = 0; hh <= c.hMax + 1e-6; hh += hs) {
       var Y = g.y(hh).toFixed(1);
-      out.push('<line x1="' + x0 + '" x2="' + x1 + '" y1="' + Y + '" y2="' + Y + '" stroke="#282B31" stroke-width="1"/>');
-      out.push('<text x="' + (x0 - 8) + '" y="' + (+Y + 3.5) + '" fill="#8E9196" font-size="' + (o.mini ? 10 : 10.5) + '" text-anchor="end">' + num(hh) + '</text>');
+      out.push('<line x1="' + x0 + '" x2="' + x1 + '" y1="' + Y + '" y2="' + Y + '" stroke="' + T.grid + '" stroke-width="1"/>');
+      out.push('<text x="' + (x0 - 8) + '" y="' + (+Y + 3.5) + '" fill="' + T.label + '" font-size="' + (o.mini ? 10 : 10.5) + '" text-anchor="end">' + num(hh) + '</text>');
     }
     if (o.eff) {
       [0, 20, 40, 60, 80, 100].forEach(function (e) {
-        out.push('<text x="' + (x1 + 8) + '" y="' + (g.ye(e) + 3.5) + '" fill="#8E9196" font-size="10.5">' + e + '</text>');
+        out.push('<text x="' + (x1 + 8) + '" y="' + (g.ye(e) + 3.5) + '" fill="' + T.label + '" font-size="10.5">' + e + '</text>');
       });
-      out.push('<text x="' + (x1 + 8) + '" y="' + (y1 - 8) + '" fill="#8E9196" font-size="10.5">η %</text>');
+      out.push('<text x="' + (x1 + 8) + '" y="' + (y1 - 8) + '" fill="' + T.label + '" font-size="10.5">η %</text>');
     }
-    out.push('<text x="' + x0 + '" y="' + (y1 - 8) + '" fill="#8E9196" font-size="10.5" text-anchor="middle">H m</text>');
-    out.push('<text x="' + x1 + '" y="' + (o.h - 4) + '" fill="#8E9196" font-size="10.5" text-anchor="end">Q m³/h</text>');
-    out.push('<line x1="' + x0 + '" x2="' + x1 + '" y1="' + y0 + '" y2="' + y0 + '" stroke="#8E9196" stroke-width="1"/>');
-    out.push('<line x1="' + x0 + '" x2="' + x0 + '" y1="' + y1 + '" y2="' + y0 + '" stroke="#8E9196" stroke-width="1"/>');
+    out.push('<text x="' + x0 + '" y="' + (y1 - 8) + '" fill="' + T.label + '" font-size="10.5" text-anchor="middle">H m</text>');
+    out.push('<text x="' + x1 + '" y="' + (o.h - 4) + '" fill="' + T.label + '" font-size="10.5" text-anchor="end">Q m³/h</text>');
+    out.push('<line x1="' + x0 + '" x2="' + x1 + '" y1="' + y0 + '" y2="' + y0 + '" stroke="' + T.axis + '" stroke-width="1"/>');
+    out.push('<line x1="' + x0 + '" x2="' + x0 + '" y1="' + y1 + '" y2="' + y0 + '" stroke="' + T.axis + '" stroke-width="1"/>');
 
     var path = function (arr, fy) {
       var s = '', pen = false;
@@ -675,31 +678,31 @@
       return s || 'M0 0';
     };
     out.push('<g clip-path="url(#' + id + '-clip)">');
-    if (o.eff) out.push('<path d="' + path(c.eff.map(function (e) { return e * 100; }), g.ye) + '" fill="none" stroke="#8E9196" stroke-width="1.2" stroke-dasharray="1.5 4" stroke-linecap="round"/>');
+    if (o.eff) out.push('<path d="' + path(c.eff.map(function (e) { return e * 100; }), g.ye) + '" fill="none" stroke="' + T.eff + '" stroke-width="1.2" stroke-dasharray="1.5 4" stroke-linecap="round"/>');
     if (!o.mini && Math.abs(this.tgt.pump[1] - this.tgt.full[1]) > 0.01) out.push('<path d="' + path(c.full, g.y) + '" fill="none" stroke="#E04619" stroke-opacity=".5" stroke-width="1.4" stroke-dasharray="5 5"/>');
-    out.push('<path d="' + path(c.sys, g.y) + '" fill="none" stroke="#F4F3EF" stroke-width="' + (o.mini ? 1.6 : 1.8) + '"/>');
+    out.push('<path d="' + path(c.sys, g.y) + '" fill="none" stroke="' + T.sys + '" stroke-width="' + (o.mini ? 1.6 : 1.8) + '"/>');
     out.push('<path d="' + path(c.pump, g.y) + '" fill="none" stroke="#E04619" stroke-width="' + (o.mini ? 2 : 2.4) + '"/>');
     out.push('</g>');
 
     // BEP marker
     if (c.bep.Q > 0 && c.bep.Q < c.qMax && c.bep.H > 0) {
       var bx = g.x(c.bep.Q), by = g.y(c.bep.H);
-      out.push('<path d="M' + bx + ' ' + (by - 6) + 'L' + (bx + 6) + ' ' + by + 'L' + bx + ' ' + (by + 6) + 'L' + (bx - 6) + ' ' + by + 'Z" fill="#111214" stroke="#F4F3EF" stroke-width="1.2"/>');
-      if (!o.mini) out.push('<text x="' + (bx + 10) + '" y="' + (by - 9) + '" fill="#8E9196" font-size="10.5">BEP</text>');
+      out.push('<path d="M' + bx + ' ' + (by - 6) + 'L' + (bx + 6) + ' ' + by + 'L' + bx + ' ' + (by + 6) + 'L' + (bx - 6) + ' ' + by + 'Z" fill="' + T.bg + '" stroke="' + T.ink + '" stroke-width="1.2"/>');
+      if (!o.mini) out.push('<text x="' + (bx + 10) + '" y="' + (by - 9) + '" fill="' + T.label + '" font-size="10.5">BEP</text>');
     }
     // Operating point
     if (c.op) {
       var ox = g.x(c.op.Q), oy = g.y(c.op.H);
-      out.push('<line x1="' + ox + '" x2="' + ox + '" y1="' + oy + '" y2="' + y0 + '" stroke="#F4F3EF" stroke-opacity=".35" stroke-dasharray="2 3"/>');
-      out.push('<line x1="' + x0 + '" x2="' + ox + '" y1="' + oy + '" y2="' + oy + '" stroke="#F4F3EF" stroke-opacity=".35" stroke-dasharray="2 3"/>');
-      out.push('<circle cx="' + ox + '" cy="' + oy + '" r="' + (o.mini ? 5 : 6) + '" fill="#111214" stroke="#F4F3EF" stroke-width="1.6"/><circle cx="' + ox + '" cy="' + oy + '" r="2" fill="#E04619"/>');
+      out.push('<line x1="' + ox + '" x2="' + ox + '" y1="' + oy + '" y2="' + y0 + '" stroke="' + T.ink + '" stroke-opacity=".35" stroke-dasharray="2 3"/>');
+      out.push('<line x1="' + x0 + '" x2="' + ox + '" y1="' + oy + '" y2="' + oy + '" stroke="' + T.ink + '" stroke-opacity=".35" stroke-dasharray="2 3"/>');
+      out.push('<circle cx="' + ox + '" cy="' + oy + '" r="' + (o.mini ? 5 : 6) + '" fill="' + T.bg + '" stroke="' + T.ink + '" stroke-width="1.6"/><circle cx="' + ox + '" cy="' + oy + '" r="2" fill="#E04619"/>');
       var lab = 'OP ' + num(c.op.Q) + ' m³/h · ' + num(c.op.H, 1) + ' m';
       var right = ox < (x0 + x1) / 2;
       var fs = o.mini ? 10.5 : 11.5, tw = lab.length * fs * 0.6 + 18, th = fs + 12;
       var lx = right ? ox + 12 : ox - 12 - tw, ly = oy + (o.mini ? -14 - th : 14);
       lx = Math.max(x0 + 4, Math.min(lx, x1 - tw - 4)); ly = Math.max(y1 + 2, Math.min(ly, y0 - th - 4));
-      out.push('<rect x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" width="' + tw.toFixed(1) + '" height="' + th + '" rx="' + (th / 2) + '" fill="#111214" fill-opacity=".92" stroke="#282B31"/>');
-      out.push('<text x="' + (lx + tw / 2).toFixed(1) + '" y="' + (ly + th / 2 + fs * 0.36).toFixed(1) + '" fill="#F4F3EF" font-size="' + fs + '" text-anchor="middle">' + lab + '</text>');
+      out.push('<rect x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" width="' + tw.toFixed(1) + '" height="' + th + '" rx="' + (th / 2) + '" fill="' + T.pill + '" fill-opacity=".94" stroke="' + T.pillB + '"/>');
+      out.push('<text x="' + (lx + tw / 2).toFixed(1) + '" y="' + (ly + th / 2 + fs * 0.36).toFixed(1) + '" fill="' + T.ink + '" font-size="' + fs + '" text-anchor="middle">' + lab + '</text>');
     } else {
       out.push('<text x="' + ((x0 + x1) / 2) + '" y="' + ((y0 + y1) / 2) + '" fill="#E04619" font-size="12" text-anchor="middle">NO DELIVERY — SHUTOFF HEAD BELOW STATIC HEAD</text>');
     }
@@ -708,19 +711,19 @@
       var hq = Math.max(0, Math.min(c.qMax, this.hoverQ)), hx = g.x(hq);
       var at = function (arr) { var f = hq / c.qMax * (N_PTS - 1), i0 = Math.floor(f), i1 = Math.min(N_PTS - 1, i0 + 1); return arr[i0] + (arr[i1] - arr[i0]) * (f - i0); };
       var hp = at(c.pump), hs = at(c.sys);
-      out.push('<line x1="' + hx + '" x2="' + hx + '" y1="' + y1 + '" y2="' + y0 + '" stroke="#F4F3EF" stroke-opacity=".28" stroke-width="1"/>');
+      out.push('<line x1="' + hx + '" x2="' + hx + '" y1="' + y1 + '" y2="' + y0 + '" stroke="' + T.ink + '" stroke-opacity=".28" stroke-width="1"/>');
       if (hp > 0 && hp < c.hMax) {
         out.push('<line x1="' + x0 + '" x2="' + hx + '" y1="' + g.y(hp) + '" y2="' + g.y(hp) + '" stroke="#E04619" stroke-opacity=".35" stroke-dasharray="2 3"/>');
-        out.push('<circle cx="' + hx + '" cy="' + g.y(hp) + '" r="4.5" fill="#111214" stroke="#E04619" stroke-width="1.6"/>');
+        out.push('<circle cx="' + hx + '" cy="' + g.y(hp) + '" r="4.5" fill="' + T.bg + '" stroke="#E04619" stroke-width="1.6"/>');
       }
-      if (hs > 0 && hs < c.hMax) out.push('<circle cx="' + hx + '" cy="' + g.y(hs) + '" r="4.5" fill="#111214" stroke="#F4F3EF" stroke-width="1.6"/>');
+      if (hs > 0 && hs < c.hMax) out.push('<circle cx="' + hx + '" cy="' + g.y(hs) + '" r="4.5" fill="' + T.bg + '" stroke="' + T.ink + '" stroke-width="1.6"/>');
     }
     this.svg.innerHTML = out.join('');
   };
 
   var hqChart;
   function initCharts() {
-    hqChart = new Chart($('#hqChart'), { w: 760, h: 440, pad: { l: 52, r: 44, t: 26, b: 42 }, eff: true });
+    hqChart = new Chart($('#hqChart'), { w: 760, h: 440, pad: { l: 52, r: 44, t: 26, b: 42 }, eff: true, themed: true });
     var svg = $('#hqChart'), tip = $('#chartTip'), host = $('.chart-host');
     var targetQ = null, scrub = 0, lastEv = null;
     function scrubLoop() {
@@ -1025,13 +1028,7 @@
     var tot = b.capex + r.energyH + r.maintH;
     var pc = function (v) { return (v / tot * 100); };
     $('#stripName').textContent = bidName(rec);
-    rollText($('#stripMeta'), 'η ' + num(r.eta * 100, 1) + ' % · ' + num(r.Pin, 1) + ' kW · ' + num(r.kWh / 1000) + ' MWh/yr');
-    $('#ebCapex').style.width = pc(b.capex).toFixed(2) + '%';
-    $('#ebEnergy').style.width = pc(r.energyH).toFixed(2) + '%';
-    $('#ebMaint').style.width = pc(r.maintH).toFixed(2) + '%';
-    rollText($('#ebCapexP'), num(pc(b.capex), 0) + '%');
-    rollText($('#ebEnergyP'), num(pc(r.energyH), 0) + '%');
-    rollText($('#ebMaintP'), num(pc(r.maintH), 0) + '%');
+    rollText($('#stripMeta'), 'η ' + num(r.eta * 100, 1) + ' % · ' + num(r.Pin, 1) + ' kW · ' + num(r.kWh / 1000) + ' MWh/yr · electricity ' + num(pc(r.energyH), 0) + '% of ' + state.duty.horizon + '-yr TCO');
     // energy flow speed follows the cost of running: hours × tariff
     var intensity = Math.min(1, (state.duty.hours * state.duty.tariff) / 1500);
     $('#estrip').style.setProperty('--flow', (2.6 - 2 * intensity).toFixed(2) + 's');
@@ -1086,6 +1083,322 @@
       if (!raf) raf = requestAnimationFrame(loop);
     });
     foot.addEventListener('pointerleave', function () { tgt.o = 0; if (!raf) raf = requestAnimationFrame(loop); });
+  }
+
+  /* ================================================================
+     Custom select: an accessible listbox popover layered over the
+     native <select>, which stays in the DOM as the source of truth
+     (data binding, forms, keyboard fallbacks and tests keep working).
+     ================================================================ */
+  var openCsel = null;
+  function enhanceSelects(root) {
+    $$('select', root || doc).forEach(function (sel) {
+      if (sel.closest('.csel')) return;
+      var wrap = doc.createElement('span'); wrap.className = 'csel';
+      sel.parentNode.insertBefore(wrap, sel); wrap.appendChild(sel);
+      var btn = doc.createElement('button');
+      btn.type = 'button'; btn.className = 'csel__btn';
+      btn.setAttribute('aria-haspopup', 'listbox'); btn.setAttribute('aria-expanded', 'false');
+      var lab = sel.labels && sel.labels[0] ? sel.labels[0].querySelector('span') : null;
+      var name = sel.getAttribute('aria-label') || (lab ? lab.textContent : '') || 'Select';
+      btn.setAttribute('aria-label', name.trim());
+      btn.innerHTML = '<span class="csel__val"></span><svg class="csel__chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      wrap.appendChild(btn);
+      sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
+      var sync = function () { var o = sel.options[sel.selectedIndex]; btn.querySelector('.csel__val').textContent = o ? o.text : ''; };
+      sel._cselSync = sync;
+      sel.addEventListener('change', sync);
+      new MutationObserver(sync).observe(sel, { childList: true, subtree: true, characterData: true });
+      btn.addEventListener('click', function (e) { e.stopPropagation(); if (openCsel && openCsel.sel === sel) closeCsel(true); else openList(sel, btn); });
+      btn.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openList(sel, btn); }
+      });
+      sync();
+    });
+  }
+  function syncSelects() { $$('select').forEach(function (s) { if (s._cselSync) s._cselSync(); }); }
+  function openList(sel, btn) {
+    closeCsel(false);
+    var host = btn.closest('dialog') || btn.closest('#app') || doc.body;
+    var list = doc.createElement('ul');
+    list.className = 'csel__list' + (btn.closest('dialog') || (btn.closest('#app') && $('#app').getAttribute('data-theme') === 'stone') ? ' csel__list--light' : '');
+    list.setAttribute('role', 'listbox'); list.id = 'csel-' + Math.random().toString(36).slice(2, 8);
+    list.setAttribute('aria-label', btn.getAttribute('aria-label'));
+    Array.prototype.forEach.call(sel.options, function (o, i) {
+      var li = doc.createElement('li');
+      li.setAttribute('role', 'option'); li.id = list.id + '-' + i; li.className = 'csel__opt';
+      li.setAttribute('aria-selected', i === sel.selectedIndex ? 'true' : 'false');
+      li.innerHTML = '<span>' + esc(o.text) + '</span><svg class="csel__check" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.5 5 9l4.5-5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      li.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      li.addEventListener('click', function () { choose(i); });
+      li.addEventListener('mousemove', function () { focus(i); });
+      list.appendChild(li);
+    });
+    host.appendChild(list);
+    var r = btn.getBoundingClientRect(), hr = host === doc.body ? { left: 0, top: 0 } : host.getBoundingClientRect();
+    var w = Math.max(r.width, 180), left = Math.min(r.left, window.innerWidth - w - 8);
+    list.style.minWidth = w + 'px';
+    list.style.left = (left - hr.left + (host.scrollLeft || 0)) + 'px';
+    var below = window.innerHeight - r.bottom, h = Math.min(list.scrollHeight, 300);
+    var top = below > h + 12 || below > r.top ? r.bottom + 6 : r.top - h - 6;
+    list.style.top = (top - hr.top + (host === doc.body ? window.scrollY : host.scrollTop || 0)) + 'px';
+    list.style.position = host === doc.body ? 'absolute' : (host.tagName === 'DIALOG' ? 'fixed' : 'absolute');
+    if (host.tagName === 'DIALOG') { list.style.left = left + 'px'; list.style.top = top + 'px'; }
+    btn.setAttribute('aria-expanded', 'true'); btn.setAttribute('aria-controls', list.id);
+    var active = Math.max(0, sel.selectedIndex);
+    openCsel = { sel: sel, btn: btn, list: list, active: active, t: performance.now() };
+    focus(active);
+    function focus(i) {
+      openCsel.active = i;
+      $$('.csel__opt', list).forEach(function (li, k) { li.classList.toggle('is-active', k === i); });
+      var li = list.children[i]; if (li) { btn.setAttribute('aria-activedescendant', li.id); if (li.offsetTop < list.scrollTop) list.scrollTop = li.offsetTop - 6; else if (li.offsetTop + li.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = li.offsetTop + li.offsetHeight - list.clientHeight + 6; }
+    }
+    function choose(i) {
+      if (sel.selectedIndex !== i) {
+        sel.selectedIndex = i;
+        sel.dispatchEvent(new Event('input', { bubbles: true }));
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      closeCsel(true);
+    }
+    openCsel.focus = focus; openCsel.choose = choose;
+  }
+  function closeCsel(refocus) {
+    if (!openCsel) return;
+    var o = openCsel; openCsel = null;
+    o.list.remove(); o.btn.setAttribute('aria-expanded', 'false'); o.btn.removeAttribute('aria-activedescendant');
+    if (refocus) o.btn.focus();
+  }
+  doc.addEventListener('keydown', function (e) {
+    if (!openCsel) return;
+    var n = openCsel.sel.options.length;
+    var o = openCsel, stop = function () { e.preventDefault(); e.stopPropagation(); };
+    if (e.key === 'ArrowDown') { stop(); o.focus(Math.min(n - 1, o.active + 1)); }
+    else if (e.key === 'ArrowUp') { stop(); o.focus(Math.max(0, o.active - 1)); }
+    else if (e.key === 'Home') { stop(); o.focus(0); }
+    else if (e.key === 'End') { stop(); o.focus(n - 1); }
+    else if (e.key === 'Enter' || e.key === ' ') { stop(); o.choose(o.active); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeCsel(true); }
+    else if (e.key === 'Tab') closeCsel(false);
+  }, true);
+  doc.addEventListener('mousedown', function (e) { if (openCsel && !e.target.closest('.csel__list') && !e.target.closest('.csel__btn')) closeCsel(false); });
+  window.addEventListener('resize', function () { closeCsel(false); });
+  // close on scroll — but ignore the scroll that brought the control into view just before opening
+  doc.addEventListener('scroll', function (e) { if (openCsel && performance.now() - openCsel.t > 250 && !(e.target.closest && e.target.closest('.csel__list'))) closeCsel(false); }, true);
+
+  /* ================================================================
+     Executive Excel workbook (.xlsx) — dependency-free OpenXML writer
+     ================================================================ */
+  var CRC_T = (function () { var t = [], c, n, k; for (n = 0; n < 256; n++) { c = n; for (k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  // Minimal ZIP (stored entries) — valid for OpenXML packages.
+  function zip(files) {
+    var enc = new TextEncoder(), parts = [], central = [], offset = 0;
+    var u16 = function (v) { return [v & 255, (v >>> 8) & 255]; }, u32 = function (v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; };
+    var d = new Date(), dt = ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)), dd = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate());
+    files.forEach(function (f) {
+      var name = enc.encode(f.name), data = enc.encode(f.data), crc = crc32(data);
+      var head = [].concat([0x50, 0x4B, 0x03, 0x04], u16(20), u16(0x0800), u16(0), u16(dt), u16(dd), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0));
+      parts.push(new Uint8Array(head), name, data);
+      central.push(new Uint8Array([].concat([0x50, 0x4B, 0x01, 0x02], u16(20), u16(20), u16(0x0800), u16(0), u16(dt), u16(dd), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset))), name);
+      offset += head.length + name.length + data.length;
+    });
+    var csize = central.reduce(function (s, p) { return s + p.length; }, 0);
+    var end = new Uint8Array([].concat([0x50, 0x4B, 0x05, 0x06], u16(0), u16(0), u16(files.length), u16(files.length), u32(csize), u32(offset), u16(0)));
+    return new Blob(parts.concat(central, [end]), { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+  function xmlEsc(s) { return String(s).replace(/[<>&"]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]; }); }
+  function colL(i) { var s = ''; i++; while (i) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+
+  // Style ids (cellXfs order below)
+  var X = { def: 0, banner: 1, sub: 2, head: 3, headRec: 4, section: 5, label: 6, unit: 7, money: 8, pct: 9, dec2: 10, int: 11, text: 12, moneyRec: 13, pctRec: 14, dec2Rec: 15, intRec: 16, textRec: 17, moneyB: 18, moneyBRec: 19, wrap: 20, wrapRec: 21, dec1: 22, dec1Rec: 23, basisV: 24, basisM: 25, note: 26 };
+  var STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<numFmts count="4"><numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0"/><numFmt numFmtId="165" formatCode="0.0%"/><numFmt numFmtId="166" formatCode="0.00"/><numFmt numFmtId="167" formatCode="#,##0"/></numFmts>' +
+    '<fonts count="6">' +
+    '<font><sz val="10"/><color rgb="FF111214"/><name val="Calibri"/><family val="2"/></font>' +
+    '<font><b/><sz val="15"/><color rgb="FFFFFFFF"/><name val="Calibri"/><family val="2"/></font>' +
+    '<font><sz val="10"/><color rgb="FFE2E1DC"/><name val="Calibri"/><family val="2"/></font>' +
+    '<font><b/><sz val="10"/><color rgb="FF111214"/><name val="Calibri"/><family val="2"/></font>' +
+    '<font><sz val="9"/><color rgb="FF6E6D68"/><name val="Calibri"/><family val="2"/></font>' +
+    '<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/><family val="2"/></font>' +
+    '</fonts>' +
+    '<fills count="6"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FF111214"/><bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFF4F3EF"/><bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFE04619"/><bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFFBE9E2"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+    '<borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border>' +
+    '<border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E1DC"/></bottom><diagonal/></border>' +
+    '<border><left/><right/><top/><bottom style="medium"><color rgb="FF111214"/></bottom><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="27">' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +                                                                       // 0 def
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment vertical="center" indent="1"/></xf>' + // 1 banner
+    '<xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment vertical="center" indent="1"/></xf>' + // 2 sub
+    '<xf numFmtId="0" fontId="3" fillId="3" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center" wrapText="1"/></xf>' + // 3 head
+    '<xf numFmtId="0" fontId="5" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center" wrapText="1"/></xf>' + // 4 headRec
+    '<xf numFmtId="0" fontId="3" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment vertical="center" indent="1"/></xf>' + // 5 section
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center" indent="1"/></xf>' + // 6 label
+    '<xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>' + // 7 unit
+    '<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +   // 8 money
+    '<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +   // 9 pct
+    '<xf numFmtId="166" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +   // 10 dec2
+    '<xf numFmtId="167" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +   // 11 int
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment horizontal="right"/></xf>' + // 12 text
+    '<xf numFmtId="164" fontId="3" fillId="5" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' + // 13 moneyRec
+    '<xf numFmtId="165" fontId="3" fillId="5" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' + // 14 pctRec
+    '<xf numFmtId="166" fontId="3" fillId="5" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' + // 15 dec2Rec
+    '<xf numFmtId="167" fontId="3" fillId="5" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' + // 16 intRec
+    '<xf numFmtId="0" fontId="3" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="right"/></xf>' + // 17 textRec
+    '<xf numFmtId="164" fontId="3" fillId="3" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' + // 18 moneyB (TCO)
+    '<xf numFmtId="164" fontId="5" fillId="4" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' + // 19 moneyBRec
+    '<xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment wrapText="1" vertical="top"/></xf>' + // 20 wrap
+    '<xf numFmtId="0" fontId="4" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment wrapText="1" vertical="top"/></xf>' + // 21 wrapRec
+    '<xf numFmtId="2" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +    // 22 dec1 (0.00 builtin)
+    '<xf numFmtId="2" fontId="3" fillId="5" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' + // 23 dec1Rec
+    '<xf numFmtId="166" fontId="3" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/>' + // 24 basisV
+    '<xf numFmtId="164" fontId="3" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/>' + // 25 basisM (money)
+    '<xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment wrapText="1" vertical="top"/></xf>' + // 26 note
+    '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+
+  function xlsxWorkbook() {
+    var rec = result.recommended, ch = result.cheapest, nb = state.bids.length;
+    var rows = [], merges = [], rowH = {};
+    var cell = function (c, r, v, s, f) { return { c: c, r: r, v: v, s: s, f: f }; };
+    var add = function (cells, h) { var r = rows.length + 1; rows.push(cells.map(function (x) { x.r = r; return x; })); if (h) rowH[r] = h; return r; };
+    var BC = function (i) { return colL(2 + i); };                // bidder columns C, D, E
+    var rs = function (base, i) { return i === rec ? ({ 8: 13, 9: 14, 10: 15, 11: 16, 12: 17, 18: 19, 20: 21, 22: 23 })[base] || base : base; };
+    var last = colL(1 + nb);
+    // banner
+    var r1 = add([cell('A', 0, 'MYENG · Technical Bid Evaluation', X.banner)].concat(state.bids.map(function (b, i) { return cell(BC(i), 0, '', X.banner); })).concat([cell('B', 0, '', X.banner)]), 30);
+    merges.push('A' + r1 + ':' + last + r1);
+    var r2 = add([cell('A', 0, state.project.tag + ' · ' + state.project.service + ' · ' + dutyLabel() + ' · ' + state.duty.horizon + '-yr horizon · issued ' + today() + ' · illustrative template data', X.sub)].concat([cell('B', 0, '', X.sub)]).concat(state.bids.map(function (b, i) { return cell(BC(i), 0, '', X.sub); })), 20);
+    merges.push('A' + r2 + ':' + last + r2);
+    add([]);
+    // project basis (referenced by the formulas below)
+    add([cell('A', 0, 'Project basis', X.section), cell('B', 0, '', X.section), cell('C', 0, '', X.section)]);
+    var B = {};
+    [['Q', 'Duty flow Q', 'm³/h', state.duty.Q, X.basisV], ['H', 'Total head H', 'm', state.duty.H, X.basisV], ['hours', 'Operating hours', 'h/yr', state.duty.hours, X.basisV],
+      ['tariff', 'Electricity tariff', '$/kWh', state.duty.tariff, X.basisV], ['horizon', 'Evaluation horizon', 'years', state.duty.horizon, X.basisV],
+      ['ef', 'Grid emission factor', 'kg CO₂/kWh', state.basis.ef, X.basisV], ['npsha', 'NPSHa at rated flow', 'm', +result.npsha.npsha.toFixed(4), X.basisV]
+    ].forEach(function (k) { B[k[0]] = '$C$' + add([cell('A', 0, k[1], X.label), cell('B', 0, k[2], X.unit), cell('C', 0, k[3], k[4])]); });
+    add([]);
+    // bidder header
+    var hr = add([cell('A', 0, 'Parameter', X.head), cell('B', 0, 'Unit', X.head)].concat(state.bids.map(function (b, i) { return cell(BC(i), 0, bidName(i) + (i === rec && result.anyCompliant ? '  ★ Recommended' : ''), i === rec ? X.headRec : X.head); })), 34);
+    var R = {};
+    var section = function (t) { add([cell('A', 0, t, X.section), cell('B', 0, '', X.section)].concat(state.bids.map(function (b, i) { return cell(BC(i), 0, '', X.section); }))); };
+    var line = function (key, label, unit, base, val, fml) {
+      R[key] = add([cell('A', 0, label, X.label), cell('B', 0, unit, X.unit)].concat(state.bids.map(function (b, i) {
+        var res = result.bids[i];
+        return cell(BC(i), 0, val(b, res, i), rs(base, i), fml ? fml(BC(i), i) : null);
+      })));
+    };
+    section('Commercial');
+    line('capex', 'CapEx (pump + motor + baseplate)', 'USD', X.money, function (b) { return b.capex; });
+    line('maint', 'Annual maintenance', 'USD/yr', X.money, function (b) { return b.maint; });
+    line('lead', 'Lead time', 'weeks', X.int, function (b) { return b.lead; });
+    section('Hydraulic performance');
+    line('etaBep', 'BEP efficiency', '%', X.pct, function (b) { return b.etaBep / 100; });
+    line('qBep', 'BEP flow', 'm³/h', X.int, function (b) { return b.qBep; });
+    line('npshr', 'NPSHr (NPSH3) at rated flow', 'm', X.dec2, function (b) { return b.npshr; });
+    section('Mechanical & driver');
+    line('material', 'Material class (API 610)', '', X.text, function (b) { return b.material; });
+    line('mawp', 'Casing MAWP', 'bar(g)', X.int, function (b) { return b.mawp; });
+    line('motorKw', 'Motor rating', 'kW', X.int, function (b) { return b.motorKw; });
+    line('etaMotor', 'Motor efficiency', '%', X.pct, function (b) { return b.etaMotor / 100; });
+    section('Calculated at rated duty (MYENG engine)');
+    line('eta', 'Pump efficiency at duty', '%', X.pct, function (b, r) { return +r.eta.toFixed(6); });
+    line('ratio', 'Rated flow / BEP flow', '%', X.pct, function (b, r) { return +r.ratio.toFixed(6); });
+    line('Ph', 'Hydraulic power', 'kW', X.dec2, function (b, r) { return +r.Ph.toFixed(4); });
+    line('Pshaft', 'Shaft power', 'kW', X.dec2, function (b, r) { return +r.Pshaft.toFixed(4); });
+    line('Pin', 'Electrical input', 'kW', X.dec2, function (b, r) { return +r.Pin.toFixed(4); });
+    line('motorReq', 'API 610 minimum driver rating', 'kW', X.dec2, function (b, r) { return +r.motorReq.toFixed(4); });
+    section('Lifecycle cost · ' + state.duty.horizon + ' years (Excel formulas)');
+    line('energyYr', 'Annual energy cost', 'USD/yr', X.money, function (b, r) { return +r.energyYr.toFixed(2); }, function (c) { return c + R.Pin + '*' + B.hours + '*' + B.tariff; });
+    line('energyH', 'Energy over horizon', 'USD', X.money, function (b, r) { return +r.energyH.toFixed(2); }, function (c) { return c + R.energyYr + '*' + B.horizon; });
+    line('maintH', 'Maintenance over horizon', 'USD', X.money, function (b, r) { return +r.maintH.toFixed(2); }, function (c) { return c + R.maint + '*' + B.horizon; });
+    R.tco = add([cell('A', 0, 'Total lifecycle cost (TCO)', X.section), cell('B', 0, 'USD', X.section)].concat(state.bids.map(function (b, i) {
+      var c = BC(i); return cell(c, 0, +result.bids[i].tco.toFixed(2), i === rec ? X.moneyBRec : X.moneyB, 'SUM(' + c + R.capex + ',' + c + R.energyH + ',' + c + R.maintH + ')');
+    })), 22);
+    line('delta', 'ΔTCO vs lowest-CapEx bid (negative = saves)', 'USD', X.money, function (b, r) { return +(-r.savingsVsCheapest).toFixed(2); }, function (c) { return c + R.tco + '-' + BC(ch) + R.tco; });
+    line('co2', 'Annual CO₂', 't/yr', X.dec2, function (b, r) { return +r.co2.toFixed(4); }, function (c) { return c + R.Pin + '*' + B.hours + '*' + B.ef + '/1000'; });
+    line('npshm', 'NPSH margin (NPSHa − NPSHr)', 'm', X.dec2, function (b, r) { return +r.npshMargin.toFixed(4); }, function (c) { return B.npsha + '-' + c + R.npshr; });
+    section('Compliance');
+    line('status', 'Status', '', X.text, function (b, r, i) { return i === rec && result.anyCompliant ? 'RECOMMENDED' : r.compliant ? 'Compliant' : 'Non-compliant'; });
+    var devRow = add([cell('A', 0, 'Deviations (API 610 & project spec)', X.label), cell('B', 0, '', X.unit)].concat(state.bids.map(function (b, i) {
+      var t = result.bids[i].deviations.map(function (d) { return '[' + d.sev.toUpperCase() + '] ' + d.text; }).join('\n') || 'None';
+      return cell(BC(i), 0, t, i === rec ? X.wrapRec : X.wrap);
+    })));
+    var maxDev = Math.max.apply(null, result.bids.map(function (r) { return Math.max(1, r.deviations.length); }));
+    rowH[devRow] = 15 + maxDev * 30;
+    add([]);
+    var nr = add([cell('A', 0, 'Generated in the browser by MYENG Studio. Figures in templates are illustrative, not vendor-published. Formulas mirror engine.js (undiscounted, constant tariff); confirm against certified vendor curves before award.', X.note)], 30);
+    merges.push('A' + nr + ':' + last + nr);
+
+    // sheet XML
+    var widths = { A: 44, B: 12 };
+    state.bids.forEach(function (b, i) { widths[BC(i)] = Math.max(24, bidName(i).length + 16); });
+    var sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' +
+      '<sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="' + hr + '" topLeftCell="A' + (hr + 1) + '" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
+      '<sheetFormatPr defaultRowHeight="18" customHeight="1"/><cols>' +
+      Object.keys(widths).map(function (k) { var i = k.charCodeAt(0) - 64; return '<col min="' + i + '" max="' + i + '" width="' + widths[k] + '" customWidth="1"/>'; }).join('') +
+      '</cols><sheetData>' +
+      rows.map(function (cells, idx) {
+        var r = idx + 1, ht = rowH[r] ? ' ht="' + rowH[r] + '" customHeight="1"' : '';
+        cells.sort(function (a, b) { return a.c.localeCompare(b.c); });
+        return '<row r="' + r + '"' + ht + '>' + cells.map(function (x) {
+          var ref = x.c + r, st = ' s="' + x.s + '"';
+          if (x.f) return '<c r="' + ref + '"' + st + '><f>' + xmlEsc(x.f) + '</f><v>' + x.v + '</v></c>';
+          if (typeof x.v === 'number') return '<c r="' + ref + '"' + st + '><v>' + x.v + '</v></c>';
+          if (x.v === '' || x.v == null) return '<c r="' + ref + '"' + st + '/>';
+          return '<c r="' + ref + '"' + st + ' t="inlineStr"><is><t xml:space="preserve">' + xmlEsc(x.v) + '</t></is></c>';
+        }).join('') + '</row>';
+      }).join('') +
+      '</sheetData><mergeCells count="' + merges.length + '">' + merges.map(function (m) { return '<mergeCell ref="' + m + '"/>'; }).join('') + '</mergeCells>' +
+      '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>';
+    var files = [
+      { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>' },
+      { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>' },
+      { name: 'docProps/core.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>MYENG Technical Bid Evaluation</dc:title><dc:creator>MYENG Studio</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">' + new Date().toISOString().slice(0, 19) + 'Z</dcterms:created></cp:coreProperties>' },
+      { name: 'xl/workbook.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="TBE Evaluation" sheetId="1" r:id="rId1"/></sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>' },
+      { name: 'xl/_rels/workbook.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
+      { name: 'xl/styles.xml', data: STYLES },
+      { name: 'xl/worksheets/sheet1.xml', data: sheet }
+    ];
+    return zip(files);
+  }
+  function exportXlsx() {
+    var blob = xlsxWorkbook(), url = URL.createObjectURL(blob), a = doc.createElement('a');
+    a.href = url; a.download = 'MYENG_TBE_Evaluation.xlsx'; a.rel = 'noopener';
+    doc.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    toast('Excel workbook exported — MYENG_TBE_Evaluation.xlsx');
+  }
+
+  /* ================================================================
+     Studio theme: Obsidian (default) or Stone — a per-viewer preference
+     ================================================================ */
+  var THEME_KEY = 'myeng.studioTheme';
+  function setStudioTheme(t, persist) {
+    t = t === 'stone' ? 'stone' : 'obsidian';
+    $('#app').setAttribute('data-theme', t);
+    $$('[data-theme-set]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-theme-set') === t ? 'true' : 'false'); });
+    if (persist) { try { window.localStorage.setItem(THEME_KEY, t); } catch (e) { /* storage unavailable */ } }
+    if (hqChart && hqChart.cur) hqChart.draw();
+  }
+  function initStudioTheme() {
+    var t = 'obsidian';
+    try { t = window.localStorage.getItem(THEME_KEY) || 'obsidian'; } catch (e) { /* storage unavailable */ }
+    setStudioTheme(t, false);
+    $$('[data-theme-set]').forEach(function (b) { b.addEventListener('click', function () { setStudioTheme(b.getAttribute('data-theme-set'), true); }); });
+  }
+  function chartPalette() {
+    var stone = $('#app') && $('#app').getAttribute('data-theme') === 'stone';
+    return stone ? { grid: '#E2E1DC', axis: '#6E6D68', label: '#6E6D68', sys: '#111214', bg: '#FBFAF7', ink: '#111214', soft: 'rgba(17,18,20,.35)', pill: '#FBFAF7', pillB: '#E2E1DC', eff: '#8E8D86' }
+                 : { grid: '#282B31', axis: '#8E9196', label: '#8E9196', sys: '#F4F3EF', bg: '#111214', ink: '#F4F3EF', soft: 'rgba(244,243,239,.35)', pill: '#111214', pillB: '#282B31', eff: '#8E9196' };
   }
 
   /* ================================================================
@@ -1223,6 +1536,7 @@
       a.appendChild(b);
     });
     $('#modalBody').scrollTop = 0;
+    enhanceSelects($('#modalBody'));
     doc.documentElement.classList.add('modal-open');
     if (typeof modal.showModal === 'function') modal.showModal(); else modal.setAttribute('open', '');
   }
@@ -1515,6 +1829,7 @@
 
   function bindDeliverables() {
     $('#btnCsv').addEventListener('click', csv);
+    $('#btnXlsx').addEventListener('click', exportXlsx);
     $('#btnRfi').addEventListener('click', function () { openRfi(); });
     $('#btnAward').addEventListener('click', function () {
       previewReport('Award Recommendation Report', awardInner(), [
@@ -1729,7 +2044,12 @@
 
   function renderParse(p, cross) {
     var t = $('#parseTable');
-    if (!p) { t.innerHTML = '<tbody><tr><td class="empty">Paste a quotation and run the parser. Extracted fields appear here for review before insertion.</td></tr></tbody>'; return; }
+    $('#pChips').innerHTML = '<span class="pchips__k mono">' + (p ? 'Extracted' : 'Will extract') + '</span>' + FIELDS.map(function (f) {
+      var hit = p && p[f.k] && p[f.k].v != null;
+      return '<span class="pchip' + (hit ? ' is-hit' : '') + '">' + f.label + '</span>';
+    }).join('');
+    $('#parserOut').classList.toggle('is-empty', !p);
+    if (!p) { t.innerHTML = ''; return; }
     var h = '<thead><tr><th>Field</th><th>Value</th><th>Unit</th><th>Check</th><th>Source</th></tr></thead><tbody>';
     FIELDS.forEach(function (f) {
       var e = p[f.k], val = e ? e.v : null, chk = '', cls = '';
@@ -2203,6 +2523,8 @@
     bindDeliverables();
     bindParser();
     bindProjects();
+    initStudioTheme();
+    enhanceSelects($('#app'));
     $$('.viewseg [data-view]').forEach(function (b) { b.addEventListener('click', function () { setMatrixView(b.getAttribute('data-view')); }); });
     recompute();
     syncInputs();
