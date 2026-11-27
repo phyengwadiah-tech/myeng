@@ -279,6 +279,10 @@
       <button role="tab" id="tab-ai" aria-controls="panel-ai" aria-selected="false" tabindex="-1" data-tab="ai">Datasheet Parser</button>
       <span class="tabs__ink" aria-hidden="true"></span>
     </div>
+    <div class="themeseg" role="group" aria-label="Studio theme">
+      <button type="button" data-theme-set="stone" aria-pressed="false" title="Stone theme"><i class="themeseg__sw themeseg__sw--stone" aria-hidden="true"></i>Stone</button>
+      <button type="button" data-theme-set="obsidian" aria-pressed="true" title="Obsidian theme"><i class="themeseg__sw themeseg__sw--obsidian" aria-hidden="true"></i>Obsidian</button>
+    </div>
     <button class="pill pill--glass pill--cta" type="button" id="btnAudit">Export Audit Report <span class="pill__badge" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
   </header>
   <div class="app__case mono">
@@ -320,10 +324,6 @@
                 <b id="stripName">—</b>
                 <span class="estrip__meta mono" id="stripMeta">—</span>
               </div>
-              <div class="estrip__bar">
-                <div class="ebar" aria-hidden="true"><span class="ebar__capex" id="ebCapex"></span><span class="ebar__energy" id="ebEnergy"></span><span class="ebar__maint" id="ebMaint"></span></div>
-                <div class="ebar__leg mono"><span><i class="lg lg--capex"></i>CapEx <b id="ebCapexP">—</b></span><span><i class="lg lg--energy"></i>Electricity <b id="ebEnergyP">—</b></span><span><i class="lg lg--maint"></i>Maintenance <b id="ebMaintP">—</b></span></div>
-              </div>
             </div>
             <div class="viewbar">
               <div class="viewseg" role="group" aria-label="Matrix view">
@@ -339,23 +339,26 @@
             <div class="deliverables">
               <span class="mono dim">Procurement deliverables</span>
               <div class="deliverables__btns">
-                <button class="btn btn--paper" type="button" id="btnAward">Award Recommendation Report</button>
+                <button class="btn btn--ghost" type="button" id="btnAward">Award Recommendation Report</button>
                 <button class="btn btn--ghost" type="button" id="btnRfi">Supplier RFI Email Draft</button>
-                <button class="btn btn--ghost" type="button" id="btnCsv">Export CSV</button>
+                <button class="btn btn--paper" type="button" id="btnXlsx">Export Excel (.xlsx)</button>
+                <button class="linkbtn deliverables__csv" type="button" id="btnCsv">CSV</button>
               </div>
             </div>
             <details class="formulas">
-              <summary class="mono">Formulas &amp; assumptions</summary>
-              <div class="formulas__body mono">
-                <p>P<sub>h</sub> = ρ · g · Q · H / 3.6×10⁶ [kW], g = 9.81 m/s²</p>
-                <p>η<sub>duty</sub> = η<sub>BEP</sub> · r(2 − r), r = Q / Q<sub>BEP</sub> — parabolic part-load approximation</p>
-                <p>P<sub>shaft</sub> = P<sub>h</sub> / η<sub>duty</sub> · P<sub>in</sub> = P<sub>h</sub> / (η<sub>duty</sub> · η<sub>motor</sub>)</p>
-                <p>E<sub>yr</sub> = P<sub>in</sub> · hours · tariff · TCO = CapEx + n·E<sub>yr</sub> + n·Maint (undiscounted, constant tariff)</p>
-                <p>CO₂ = P<sub>in</sub> · hours · EF / 1000 [t/yr]</p>
-                <p>Driver check (API 610): nameplate ≥ P<sub>shaft</sub> × 1.25 (&lt;22 kW) / 1.15 (22–55 kW) / 1.10 (&gt;55 kW)</p>
-                <p>Rated flow 80–110% of BEP (minor), outside 70–120% (major) · NPSH margin ≥ 1.0 m · Material class ranking simplified from API 610 Annex H</p>
-                <p>Recommendation = lowest TCO among bids with no major deviation. Commercial flags do not affect compliance.</p>
-              </div>
+              <summary>Formulas &amp; assumptions <span class="mono">10 equations · open to inspect</span></summary>
+              <dl class="fgrid">
+                <div class="fgrid__row"><dt>Hydraulic power</dt><dd><span class="fgrid__eq">P<sub>h</sub> = ρ · g · Q · H / 3.6×10⁶</span><span class="fgrid__basis">kW · g = 9.81 m/s²</span></dd></div>
+                <div class="fgrid__row"><dt>Efficiency at duty</dt><dd><span class="fgrid__eq">η<sub>duty</sub> = η<sub>BEP</sub> · r(2 − r),&nbsp; r = Q / Q<sub>BEP</sub></span><span class="fgrid__basis">Parabolic part-load approximation</span></dd></div>
+                <div class="fgrid__row"><dt>Shaft &amp; input power</dt><dd><span class="fgrid__eq">P<sub>shaft</sub> = P<sub>h</sub> / η<sub>duty</sub> &nbsp;·&nbsp; P<sub>in</sub> = P<sub>h</sub> / (η<sub>duty</sub> · η<sub>motor</sub>)</span><span class="fgrid__basis">kW</span></dd></div>
+                <div class="fgrid__row"><dt>Lifecycle cost</dt><dd><span class="fgrid__eq">E<sub>yr</sub> = P<sub>in</sub> · hours · tariff &nbsp;·&nbsp; TCO = CapEx + n·E<sub>yr</sub> + n·Maint</span><span class="fgrid__basis">Undiscounted, constant tariff</span></dd></div>
+                <div class="fgrid__row"><dt>CO₂</dt><dd><span class="fgrid__eq">CO₂ = P<sub>in</sub> · hours · EF / 1000</span><span class="fgrid__basis">t/yr</span></dd></div>
+                <div class="fgrid__row"><dt>Driver check</dt><dd><span class="fgrid__eq">Nameplate ≥ P<sub>shaft</sub> × 1.25 / 1.15 / 1.10</span><span class="fgrid__basis">API 610: &lt;22 kW / 22–55 kW / &gt;55 kW</span></dd></div>
+                <div class="fgrid__row"><dt>Operating region</dt><dd><span class="fgrid__eq">Rated flow 80–110% of BEP</span><span class="fgrid__basis">Minor outside 80–110%, major outside 70–120%</span></dd></div>
+                <div class="fgrid__row"><dt>Cavitation</dt><dd><span class="fgrid__eq">NPSHa − NPSHr ≥ 1.0 m</span><span class="fgrid__basis">NPSHr scaled ∝ Q² at the operating point</span></dd></div>
+                <div class="fgrid__row"><dt>Material class</dt><dd><span class="fgrid__eq">Offered class ≥ specified class</span><span class="fgrid__basis">Ranking simplified from API 610 Annex H</span></dd></div>
+                <div class="fgrid__row"><dt>Recommendation</dt><dd><span class="fgrid__eq">Lowest TCO among bids with no major deviation</span><span class="fgrid__basis">Commercial flags do not affect compliance</span></dd></div>
+              </dl>
             </details>
           </div>
         </div>
@@ -436,6 +439,14 @@
 
       <!-- TAB 3 — PARSER -->
       <div class="tabpanel" role="tabpanel" id="panel-ai" aria-labelledby="tab-ai" hidden>
+        <div class="parser__intro">
+          <p class="parser__lead">Turn a vendor quotation into a TBE row in seconds — no retyping.</p>
+          <ol class="psteps">
+            <li><b>1</b>Drop or paste vendor quote</li>
+            <li><b>2</b>Extract 12 API 610 fields</li>
+            <li><b>3</b>Insert directly into TBE Matrix</li>
+          </ol>
+        </div>
         <div class="parser">
           <div class="parser__input">
             <div class="parser__head">
@@ -516,7 +527,8 @@
             </details>
           </div>
 
-          <div class="parser__out">
+          <div class="parser__out is-empty" id="parserOut">
+            <div class="pchips" id="pChips" aria-label="Fields the parser extracts"></div>
             <div class="parser__outhead">
               <h3 class="ctl-h mono">Structured result</h3>
               <div class="parser__insert">
