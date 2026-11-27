@@ -57,9 +57,9 @@
 <main id="main">
 
   <!-- HERO -->
-  <section class="hero" aria-labelledby="hero-title">
+  <section class="hero" aria-labelledby="hero-title" data-rail="01">
     <div class="wrap hero__text">
-      <p class="eyebrow mono reveal">MYENG · Rotating Equipment Intelligence</p>
+      <p class="eyebrow mono reveal">01 / Rotating Equipment Intelligence</p>
       <h1 class="hero__title" id="hero-title">
         <span class="ln"><span>Rotating equipment</span></span>
         <span class="ln"><span>procurement, engineered</span></span>
@@ -73,7 +73,7 @@
     </div>
 
     <div class="wrap wrap--wide">
-      <figure class="frame-hero tilt fade fade--frame" id="heroFrame">
+      <figure class="frame-hero tilt fade fade--frame" id="heroFrame" data-reticle="frame">
         <canvas class="flowfield" id="flowfield" aria-hidden="true"></canvas>
         <img src="/assets/impeller-hero.jpg" width="1600" height="893" alt="Machined closed centrifugal impeller in brushed stainless steel, photographed on black" decoding="async" fetchpriority="high">
         <figcaption class="corner corner--tl mono"><i></i>API 610 · ISO 5199</figcaption>
@@ -82,125 +82,149 @@
     </div>
   </section>
 
-  <!-- STORY -->
-  <section class="story" id="platform" aria-labelledby="story-title">
-    <div class="wrap story__grid">
-      <div class="story__intro">
-        <p class="eyebrow mono reveal">Platform</p>
+  <!-- 02 · STORY (sticky scrollytelling) -->
+  <section class="story" id="platform" aria-labelledby="story-title" data-rail="02">
+    <div class="wrap">
+      <header class="story__head">
+        <p class="eyebrow mono reveal">02 / Platform</p>
         <h2 class="h2 reveal" id="story-title">From three quotations to an award memo.</h2>
         <p class="lead reveal">One workspace for the part of procurement that is pure engineering.</p>
-      </div>
-      <ol class="steps">
-        <li class="step reveal">
-          <span class="step__n mono">01</span>
-          <div class="step__body">
-            <h3>Compare 3 bids</h3>
-            <p>Every bid is priced over its full life — purchase, energy and maintenance — and checked against API 610.</p>
-          </div>
-          <div class="preview preview--bars" id="storyBars" aria-label="Sample lifecycle cost by bidder"></div>
-        </li>
-        <li class="step reveal">
-          <span class="step__n mono">02</span>
-          <div class="step__body">
-            <h3>Audit hydraulics</h3>
-            <p>Pump and system curves, speed trim and cavitation margin, from the same inputs as the bid matrix.</p>
-          </div>
-          <div class="preview preview--dark">
-            <svg id="storyChart" class="chart" viewBox="0 0 560 280" role="img" aria-label="Sample pump curve and system curve with operating point"></svg>
-          </div>
-        </li>
-        <li class="step reveal">
-          <span class="step__n mono">03</span>
-          <div class="step__body">
+      </header>
+      <div class="scrolly">
+        <ol class="scrolly__steps">
+          <li class="sstep is-active" data-step="0">
+            <span class="sstep__n mono">01</span>
+            <h3>Parse &amp; normalize bids</h3>
+            <p>Quotation text becomes one comparable row per bidder — price, efficiency, NPSH3, casing rating, driver and lead time — checked against selected API 610 criteria.</p>
+            <div class="sstep__media" data-media="0"></div>
+          </li>
+          <li class="sstep" data-step="1">
+            <span class="sstep__n mono">02</span>
+            <h3>Audit hydraulics &amp; NPSH</h3>
+            <p>Pump and system curves meet at a calculated operating point. Speed trim, cavitation margin and pipe velocity follow from the same inputs.</p>
+            <div class="sstep__media" data-media="1"></div>
+          </li>
+          <li class="sstep" data-step="2">
+            <span class="sstep__n mono">03</span>
             <h3>Export for award</h3>
-            <p>An award recommendation, supplier clarification emails and a full audit trail, ready to file.</p>
+            <p>A draft award recommendation, supplier clarification emails and the full calculation trail, for your review and sign-off.</p>
+            <div class="sstep__media" data-media="2"></div>
+          </li>
+        </ol>
+        <div class="scrolly__stage">
+          <div class="stage" aria-hidden="true">
+            <div class="stage__bar mono"><span>Live preview · Package 01 · illustrative</span><span><b id="stageIdx">01</b> / 03</span></div>
+            <div class="stage__frames" id="stageFrames"></div>
+            <div class="stage__prog"><i id="stageProg"></i></div>
           </div>
-          <div class="preview preview--doc" aria-hidden="true">
-            <div class="doc">
-              <span class="doc__mark"></span>
-              <span class="doc__title">Award Recommendation</span>
-              <span class="doc__line" style="width:82%"></span>
-              <span class="doc__line" style="width:64%"></span>
-              <span class="doc__call"><b id="storyAward">Bidder A (OH2-300)</b></span>
-              <span class="doc__line" style="width:90%"></span>
-              <span class="doc__line" style="width:72%"></span>
-              <span class="doc__sign"><i></i><i></i><i></i></span>
-            </div>
-          </div>
-        </li>
-      </ol>
-    </div>
-  </section>
-
-  <!-- ARCHITECTURE STRIP -->
-  <section class="band" id="architecture" aria-labelledby="arch-title">
-    <div class="wrap">
-      <p class="eyebrow mono reveal">Architecture</p>
-      <h2 class="h2 reveal" id="arch-title">Physics in the browser. Language models only for reading.</h2>
-      <div class="band__row">
-        <div class="band__cell reveal"><h3>Deterministic physics</h3><p>Darcy–Weisbach, affinity laws and lifecycle cost run as open formulas in your browser.</p></div>
-        <div class="band__cell reveal"><h3>Azure AI Foundry &amp; Gemini, BYOK</h3><p>Quotations are parsed with your own key, sent only to your own endpoint.</p></div>
-        <div class="band__cell reveal"><h3>Zero server retention</h3><p>No backend, no cookies, no storage. Reloading the page clears everything.</p></div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- PRICING -->
-  <section class="pricing" id="pricing" aria-labelledby="pricing-title">
+  <!-- 03 · ARCHITECTURE -->
+  <section class="band" id="architecture" aria-labelledby="arch-title" data-rail="03">
     <div class="wrap">
-      <p class="eyebrow mono reveal">Pricing</p>
-      <h2 class="h2 reveal" id="pricing-title">Free to evaluate. Priced per engineer.</h2>
-      <div class="plans">
-        <article class="plan tilt tilt--light reveal">
+      <p class="eyebrow mono reveal">03 / Architecture</p>
+      <h2 class="h2 reveal" id="arch-title">Physics in the browser. Language models only for reading.</h2>
+
+      <div class="flowline reveal" aria-label="Data flow">
+        <div class="node"><span class="mono">Input</span><b>Vendor quotation</b><em>Pasted or dropped .txt / .csv</em></div>
+        <div class="node"><span class="mono">Your browser</span><b>MYENG Studio</b><em>Keys held in tab memory only</em></div>
+        <div class="node node--azure"><span class="mono">Your cloud · BYOK</span><b>Microsoft Azure AI Foundry</b><em>or an Azure OpenAI deployment, or Google Gemini</em></div>
+        <div class="node"><span class="mono">Back in your browser</span><b>Deterministic engine</b><em>Hydraulics, API 610 checks, TCO</em></div>
+      </div>
+
+      <div class="band__row">
+        <div class="band__cell reveal"><h3>Deterministic physics</h3><p>All calculations are plain JavaScript in your browser. No MYENG server receives your inputs.</p></div>
+        <div class="band__cell reveal"><h3>Azure AI Foundry &amp; Gemini, your key</h3><p>Models only extract fields from quotation text. Requests go from your browser to your endpoint, and every value is cross-checked against a local parser.</p></div>
+        <div class="band__cell reveal"><h3>No MYENG backend</h3><p>Projects stay in this browser’s local storage. Text you send to Azure or Gemini follows that provider’s retention terms.</p></div>
+      </div>
+
+      <div class="claims reveal">
+        <h3>What we do not claim</h3>
+        <ul>
+          <li>MYENG is not certified, accredited or endorsed by API, ISO or any standards body.</li>
+          <li>It checks a simplified subset of API 610 criteria and does not verify vendor data, test results or mechanical design.</li>
+          <li>Efficiency at duty uses a parabolic approximation; lifecycle cost is undiscounted at a constant tariff.</li>
+          <li>Every output needs review by a qualified engineer before award.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 · PRICING -->
+  <section class="pricing" id="pricing" aria-labelledby="pricing-title" data-rail="04">
+    <div class="wrap">
+      <p class="eyebrow mono reveal">04 / Pricing</p>
+      <h2 class="h2 reveal" id="pricing-title">Free to evaluate. Pilots for engineering teams.</h2>
+      <div class="plans reveal">
+        <article class="plan">
           <h3>Sandbox</h3>
           <p class="price">$0</p>
+          <p class="plan__line">The complete calculation engine.</p>
           <ul>
-            <li>Full hydraulics &amp; NPSH studio</li>
-            <li>3-bid TBE with sample project</li>
-            <li>BYOK datasheet extraction</li>
-            <li>CSV export and printable reports</li>
+            <li>Hydraulics &amp; NPSH studio</li>
+            <li>Saved bid packages in your browser</li>
+            <li>BYOK extraction: Azure or Gemini</li>
+            <li>CSV, RFI drafts, printable reports</li>
           </ul>
           <button class="pill pill--line pill--block" type="button" data-launch="tbe">Open Sandbox →</button>
         </article>
-        <article class="plan plan--feature tilt tilt--light reveal">
+        <article class="plan plan--feature">
+          <span class="plan__tab mono">Recommended</span>
           <h3>Pro Engineer</h3>
           <p class="price">$79<small>/ month</small></p>
+          <p class="plan__line">For engineers evaluating bids every month.</p>
           <ul>
-            <li>Managed extraction, no key needed</li>
-            <li>Unlimited saved workspaces</li>
+            <li>Managed Azure AI Foundry extraction</li>
+            <li>Unlimited synced workspaces</li>
             <li>Automated supplier RFIs</li>
             <li>Branded PDF audit reports</li>
           </ul>
-          <a class="pill pill--ink pill--block" href="mailto:founders@myeng.online?subject=MYENG%20Pro%20Engineer%20%E2%80%94%20access%20request">Request access →</a>
+          <button class="pill pill--ink pill--block magnetic" type="button" data-pilot="pro">Request pilot →</button>
         </article>
-        <article class="plan tilt tilt--light reveal">
+        <article class="plan">
           <h3>Enterprise / EPC</h3>
           <p class="price">$349<small>/ month</small></p>
+          <p class="plan__line">For procurement teams with an approval chain.</p>
           <ul>
-            <li>Multi-engineer approval workflow</li>
-            <li>Custom API 610 / ISO 5199 rulesets</li>
-            <li>Private Azure AI Foundry deployment</li>
+            <li>Multi-engineer review &amp; approval</li>
+            <li>Company rulesets: API 610, ISO 5199, site specs</li>
+            <li>Private Azure AI Foundry in your tenant</li>
             <li>Everything in Pro</li>
           </ul>
-          <a class="pill pill--line pill--block" href="mailto:founders@myeng.online?subject=MYENG%20Enterprise%20%2F%20EPC%20%E2%80%94%20discussion">Talk to the founders →</a>
+          <button class="pill pill--line pill--block" type="button" data-pilot="enterprise">Request onboarding →</button>
         </article>
       </div>
-      <p class="fine reveal">Pro and Enterprise are onboarded directly by the founders.</p>
+      <p class="fine reveal">Pro and Enterprise features are delivered through a founder-led pilot. Nothing is billed until a written order is agreed.</p>
     </div>
   </section>
 </main>
 
-<footer class="foot">
+<footer class="foot" id="contact" data-rail="05">
   <div class="wrap foot__line">
-    <span>Amman · Jubail</span>
+    <span>MYENG · Amman, Jordan · Jubail, Saudi Arabia</span>
     <a href="mailto:founders@myeng.online">founders@myeng.online</a>
     <button class="linkbtn linkbtn--ink" type="button" data-legal="privacy">Privacy</button>
     <button class="linkbtn linkbtn--ink" type="button" data-legal="terms">Terms</button>
     <span class="foot__copy">© <span id="year">2026</span> MYENG</span>
   </div>
+  <p class="wrap foot__tm">API 610 is a standard of the American Petroleum Institute. Azure is a trademark of Microsoft; Gemini of Google. MYENG is not affiliated with or endorsed by them.</p>
   <div class="wordmark" aria-hidden="true"><span>MYENG</span></div>
 </footer>
 </div>
+
+<!-- Vernier scroll rail & CAD reticle (desktop, decorative) -->
+<nav class="rail" id="rail" aria-label="Section index">
+  <a href="#top" data-target="top"><span class="mono">01</span></a>
+  <a href="#platform" data-target="platform"><span class="mono">02</span></a>
+  <a href="#architecture" data-target="architecture"><span class="mono">03</span></a>
+  <a href="#pricing" data-target="pricing"><span class="mono">04</span></a>
+  <a href="#contact" data-target="contact"><span class="mono">05</span></a>
+  <i class="rail__ind" id="railInd" aria-hidden="true"></i>
+</nav>
+<div class="reticle" id="reticle" aria-hidden="true"><i></i><span class="reticle__lab mono" id="reticleLab"></span></div>
 
 <!-- =================================================================
      VIEW B — FULL-SCREEN STUDIO  (#studio)
@@ -213,6 +237,33 @@
       <span class="brand__word">MYENG</span>
       <span class="app__title mono">Studio</span>
     </div>
+    <div class="proj" id="proj">
+      <button class="proj__btn" type="button" id="projBtn" aria-haspopup="true" aria-expanded="false" aria-controls="projMenu">
+        <span class="proj__k mono">Bid package</span>
+        <span class="proj__name" id="projName">—</span>
+        <span class="proj__caret" aria-hidden="true"></span>
+      </button>
+      <div class="proj__menu" id="projMenu" hidden>
+        <p class="proj__h mono">Bid packages · saved in this browser</p>
+        <ul class="proj__list" id="projList"></ul>
+        <div class="proj__rename" id="projRenameWrap" hidden>
+          <label class="sr" for="projRename">Package name</label>
+          <input type="text" id="projRename" maxlength="90" autocomplete="off">
+          <button class="pill pill--verm" type="button" id="projRenameSave">Save</button>
+        </div>
+        <div class="proj__actions">
+          <button type="button" data-pa="rename">Rename</button>
+          <button type="button" data-pa="duplicate">Duplicate</button>
+          <button type="button" data-pa="delete">Delete</button>
+        </div>
+        <p class="proj__h mono">New from template</p>
+        <div class="proj__new">
+          <button type="button" data-pa="new" data-t="p01">API 610 process pump · 420 m³/h @ 68 m</button>
+          <button type="button" data-pa="new" data-t="p02">ISO 5199 cooling water · 180 m³/h @ 42 m</button>
+        </div>
+        <p class="proj__note">Stored with localStorage on this device only. Never uploaded. <button class="linkbtn" type="button" data-pa="clear">Clear local data</button></p>
+      </div>
+    </div>
     <div class="tabs" role="tablist" aria-label="Studio workspaces">
       <button role="tab" id="tab-tbe" aria-controls="panel-tbe" aria-selected="true" data-tab="tbe">TBE Matrix</button>
       <button role="tab" id="tab-hyd" aria-controls="panel-hyd" aria-selected="false" tabindex="-1" data-tab="hyd">Hydraulics &amp; NPSH</button>
@@ -222,10 +273,10 @@
     <button class="pill pill--verm" type="button" id="btnAudit">Export Audit Report</button>
   </header>
   <div class="app__case mono">
-    <span><b class="tag">Sample Case Study</b> <span id="caseTitle">API 610 Process Pump Package — 420 m³/h @ 68 m</span> · <span id="tabHorizon">10</span>-yr horizon</span>
+    <span><b class="tag" id="caseTag">Illustrative template</b> <span id="caseTitle">—</span> · <span id="tabHorizon">10</span>-yr horizon <span class="saved" id="savedState"></span></span>
     <span class="app__caseactions">
-      <span class="dim">Illustrative figures · every field is editable</span>
-      <button class="linkbtn" type="button" data-load-sample>Reset sample</button>
+      <span class="dim">Every field is editable · autosaved locally</span>
+      <button class="linkbtn" type="button" id="btnResetTpl">Reset to template</button>
     </span>
   </div>
   <div class="app__body">
@@ -344,11 +395,16 @@
             <div class="parser__head">
               <h3 class="ctl-h mono">Raw vendor quotation text</h3>
               <div class="parser__head-btns">
+                <button class="btn btn--ghost btn--sm" type="button" id="btnUpload">Upload .txt / .csv</button>
+                <input type="file" id="fileQuote" accept=".txt,.csv,text/plain,text/csv" hidden>
                 <button class="btn btn--ghost btn--sm" type="button" id="btnSampleQuote">Insert Sample Raw Vendor Quote</button>
                 <button class="btn btn--ghost btn--sm" type="button" id="btnClearQuote">Clear</button>
               </div>
             </div>
-            <textarea id="quoteText" class="mono" spellcheck="false" placeholder="Paste the technical/commercial section of a pump quotation or datasheet here…"></textarea>
+            <div class="drop" id="dropZone">
+              <textarea id="quoteText" class="mono" spellcheck="false" aria-label="Raw vendor quotation text" placeholder="Paste the technical/commercial section of a pump quotation — or drop a .txt / .csv file here…"></textarea>
+              <div class="drop__overlay mono" aria-hidden="true"><span>Drop .txt or .csv to load</span></div>
+            </div>
             <p class="note">Text is processed in this tab. With the local parser nothing leaves your browser. With a cloud provider, the text is sent directly from your browser to the endpoint you configure, under your account and that provider's data terms.</p>
           </div>
 
@@ -356,7 +412,7 @@
             <h3 class="ctl-h mono">Extraction engine</h3>
             <div class="seg" role="radiogroup" aria-label="Extraction engine">
               <label><input type="radio" name="engine" value="local" checked><span>Local parser</span></label>
-              <label><input type="radio" name="engine" value="azure"><span>Azure AI Foundry</span></label>
+              <label><input type="radio" name="engine" value="azure"><span>Microsoft Azure</span></label>
               <label><input type="radio" name="engine" value="gemini"><span>Google Gemini</span></label>
             </div>
 
@@ -364,16 +420,23 @@
               <p class="note">Deterministic regular-expression parser. Recognises common quotation phrasing for price, BEP efficiency and flow, NPSH3/NPSHr, MAWP, material class, motor rating and efficiency, maintenance allowance and lead time. No key required.</p>
             </div>
             <div class="engine-cfg" data-engine="azure" hidden>
+              <p class="note azure-note"><b>Microsoft Azure AI Foundry</b> model inference or an <b>Azure OpenAI</b> deployment, called directly from this tab with your credentials.</p>
               <div class="fields">
                 <label class="field field--wide"><span>API surface</span>
                   <select id="azMode">
-                    <option value="aoai">Azure OpenAI deployment (/openai/deployments)</option>
-                    <option value="foundry">Azure AI Foundry model inference (/models)</option>
+                    <option value="foundry">Azure AI Foundry · model inference (/models/chat/completions)</option>
+                    <option value="aoai">Azure OpenAI · deployment (/openai/deployments/…)</option>
+                    <option value="v1">Azure OpenAI · v1 API (/openai/v1/chat/completions)</option>
                   </select></label>
-                <label class="field field--wide"><span>Endpoint URL</span><input type="url" id="azEndpoint" placeholder="https://your-resource.openai.azure.com" autocomplete="off"></label>
+                <label class="field field--wide"><span>Endpoint URL</span><input type="url" id="azEndpoint" placeholder="https://your-resource.services.ai.azure.com" autocomplete="off"></label>
                 <label class="field field--wide"><span>Deployment / model name</span><input type="text" id="azDeployment" placeholder="gpt-4o" autocomplete="off"></label>
-                <label class="field field--wide"><span>API version</span><input type="text" id="azVersion" value="2024-10-21" autocomplete="off"></label>
-                <label class="field field--wide"><span>API key</span><input type="password" id="azKey" placeholder="Held in page memory only" autocomplete="off"></label>
+                <label class="field field--wide" id="azVersionWrap"><span>API version</span><input type="text" id="azVersion" value="2024-05-01-preview" autocomplete="off"></label>
+                <label class="field field--wide"><span>Authentication</span>
+                  <select id="azAuth">
+                    <option value="key">API key (api-key header)</option>
+                    <option value="entra">Microsoft Entra ID access token (Bearer)</option>
+                  </select></label>
+                <label class="field field--wide"><span id="azKeyLabel">API key</span><input type="password" id="azKey" placeholder="Held in page memory only" autocomplete="off"></label>
               </div>
             </div>
             <div class="engine-cfg" data-engine="gemini" hidden>

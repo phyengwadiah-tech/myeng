@@ -33,7 +33,182 @@
   };
 
   var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
+  var SAMPLE2 = {
+    project: { tag: 'P-2201 A/B', service: 'Cooling water circulation, ISO 5199' },
+    duty: { Q: 180, H: 42, hours: 7200, tariff: 0.09, horizon: 10 },
+    basis: { rho: 998, minEff: 72, material: 'I-2', minMawp: 16, maxLead: 16, ef: 0.55 },
+    hyd: {
+      D: 202.7, L: 640, eps: 0.045, zStatic: 22, mu: 0.9, K: 14,
+      Psurf: 101.325, Pvap: 4.25, zs: 1.5, Ds: 254.5, Ls: 8, Ks: 1.8,
+      shutoff: 1.22, vfdEff: 97, speed: 90, vendor: 'rec'
+    },
+    bids: [
+      { vendor: 'Bidder D', model: 'ES 150-315', capex: 38500, etaBep: 78.5, qBep: 195, etaMotor: 94.6, material: 'I-2', mawp: 16, npshr: 3.1, motorKw: 37, maint: 1900, lead: 10 },
+      { vendor: 'Bidder E', model: 'ES 125-250', capex: 31200, etaBep: 74.0, qBep: 150, etaMotor: 93.9, material: 'I-1', mawp: 16, npshr: 4.4, motorKw: 30, maint: 1600, lead: 8 },
+      { vendor: 'Bidder F', model: 'ES 150-250', capex: 35800, etaBep: 76.5, qBep: 205, etaMotor: 94.2, material: 'I-2', mawp: 10, npshr: 2.8, motorKw: 37, maint: 1750, lead: 18 }
+    ]
+  };
+  var TEMPLATES = {
+    p01: { name: 'Package 01 · API 610 Process Pump (420 m³/h @ 68 m)', state: SAMPLE },
+    p02: { name: 'Package 02 · ISO 5199 Cooling Water Pump (180 m³/h @ 42 m)', state: SAMPLE2 }
+  };
   var state = clone(SAMPLE);
+
+  /* ================================================================
+     Workspace: multiple bid packages, persisted with localStorage only
+     ================================================================ */
+  var STORE_KEY = 'myeng.workspace.v1';
+  var ws = { active: null, projects: [] };
+  var storageOk = true;
+  function uid() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function fromTemplate(key, name) {
+    var t = TEMPLATES[key];
+    return { id: uid(), name: name || t.name, template: key, updated: Date.now(), state: clone(t.state) };
+  }
+  // Fill any missing fields from the template so older saves keep working.
+  function normalise(p) {
+    var base = TEMPLATES[p.template] ? TEMPLATES[p.template].state : SAMPLE;
+    var st = p.state && typeof p.state === 'object' ? p.state : {};
+    ['project', 'duty', 'basis', 'hyd'].forEach(function (k) { st[k] = Object.assign({}, base[k], st[k] || {}); });
+    if (!Array.isArray(st.bids) || st.bids.length !== 3) st.bids = clone(base.bids);
+    st.bids = st.bids.map(function (b, i) { return Object.assign({}, base.bids[i], b); });
+    p.state = st;
+    if (!p.name) p.name = 'Untitled package';
+    return p;
+  }
+  function storeRead() {
+    try { var raw = window.localStorage.getItem(STORE_KEY); return raw ? JSON.parse(raw) : null; }
+    catch (e) { storageOk = false; return null; }
+  }
+  function storeWrite() {
+    try { window.localStorage.setItem(STORE_KEY, JSON.stringify(ws)); storageOk = true; return true; }
+    catch (e) { storageOk = false; return false; }
+  }
+  function seedWorkspace() {
+    ws = { active: null, projects: [fromTemplate('p01'), fromTemplate('p02')] };
+    ws.active = ws.projects[0].id;
+  }
+  function initWorkspace() {
+    var saved = storeRead();
+    if (saved && Array.isArray(saved.projects) && saved.projects.length) {
+      ws = { active: saved.active, projects: saved.projects.filter(function (p) { return p && typeof p === 'object'; }).map(normalise) };
+      if (!ws.projects.length) seedWorkspace();
+      if (!ws.projects.some(function (p) { return p.id === ws.active; })) ws.active = ws.projects[0].id;
+    } else seedWorkspace();
+    storeWrite();
+    state = clone(currentProject().state);
+  }
+  function currentProject() {
+    for (var i = 0; i < ws.projects.length; i++) if (ws.projects[i].id === ws.active) return ws.projects[i];
+    return ws.projects[0];
+  }
+  var saveTimer = 0;
+  function saveSoon() {
+    clearTimeout(saveTimer);
+    var el = $('#savedState');
+    saveTimer = setTimeout(function () {
+      var p = currentProject();
+      if (!p) return;
+      p.state = clone(state); p.updated = Date.now();
+      var ok = storeWrite();
+      if (el) el.textContent = ok ? '· saved' : '· not saved (browser storage unavailable)';
+    }, 450);
+  }
+  function switchProject(id, silent) {
+    var p = currentProject();
+    if (p) { p.state = clone(state); p.updated = Date.now(); }
+    ws.active = id;
+    storeWrite();
+    state = clone(currentProject().state);
+    buildMatrix(); recompute(); syncInputs(); renderProjects();
+    if (!silent) toast('Opened ' + currentProject().name + '.');
+  }
+  function openTemplateProject(key) {
+    var found = ws.projects.filter(function (p) { return p.template === key && p.name === TEMPLATES[key].name; })[0];
+    if (!found) { found = fromTemplate(key); ws.projects.unshift(found); }
+    switchProject(found.id, true);
+  }
+  function fmtDate(t) {
+    var d = new Date(t);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  }
+  function renderProjects() {
+    var p = currentProject();
+    var parts = p.name.split(' · ');
+    $('#projName').innerHTML = parts.length > 1 ? '<b>' + esc(parts[0]) + '</b> <span>' + esc(parts.slice(1).join(' · ')) + '</span>' : '<b>' + esc(p.name) + '</b>';
+    $('#projList').innerHTML = ws.projects.map(function (q) {
+      return '<li><button type="button" class="proj__item' + (q.id === ws.active ? ' is-active' : '') + '" data-pid="' + q.id + '">' +
+        '<span class="proj__iname">' + esc(q.name) + '</span><span class="proj__meta mono">' + esc(q.state.project.tag) + ' · ' + fmtDate(q.updated) + '</span></button></li>';
+    }).join('');
+    $('#caseTag').textContent = p.template && TEMPLATES[p.template] ? 'Illustrative template' : 'Workspace';
+    $('#btnResetTpl').hidden = !(p.template && TEMPLATES[p.template]);
+  }
+  function setMenu(open) {
+    var m = $('#projMenu'), b = $('#projBtn');
+    m.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (!open) { $('#projRenameWrap').hidden = true; armed = null; $$('[data-pa]').forEach(function (x) { x.classList.remove('is-armed'); }); restoreLabels(); }
+  }
+  var armed = null;
+  function restoreLabels() {
+    var d = $('[data-pa="delete"]'), c = $('[data-pa="clear"]');
+    if (d) d.textContent = 'Delete';
+    if (c) c.textContent = 'Clear local data';
+  }
+  function bindProjects() {
+    renderProjects();
+    $('#projBtn').addEventListener('click', function (e) { e.stopPropagation(); setMenu($('#projMenu').hidden); });
+    doc.addEventListener('click', function (e) { if (!$('#projMenu').hidden && !e.target.closest('#proj')) setMenu(false); });
+    doc.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#projMenu').hidden) { setMenu(false); $('#projBtn').focus(); e.stopPropagation(); } }, true);
+    $('#projList').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-pid]'); if (!b) return;
+      setMenu(false);
+      if (b.getAttribute('data-pid') !== ws.active) switchProject(b.getAttribute('data-pid'));
+    });
+    $('#projRenameSave').addEventListener('click', doRename);
+    $('#projRename').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doRename(); } });
+    function doRename() {
+      var v = $('#projRename').value.trim();
+      if (!v) { $('#projRename').classList.add('is-invalid'); return; }
+      currentProject().name = v; currentProject().updated = Date.now();
+      storeWrite(); renderProjects(); setMenu(false); toast('Renamed to ' + v + '.');
+    }
+    $('#projMenu').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-pa]'); if (!b) return;
+      e.stopPropagation();
+      var a = b.getAttribute('data-pa'), p = currentProject();
+      if (a === 'rename') { $('#projRenameWrap').hidden = false; $('#projRename').value = p.name; $('#projRename').classList.remove('is-invalid'); $('#projRename').focus(); $('#projRename').select(); }
+      if (a === 'duplicate') {
+        p.state = clone(state);
+        var c = { id: uid(), name: p.name.replace(/( \(copy\))*$/, '') + ' (copy)', template: null, updated: Date.now(), state: clone(state) };
+        ws.projects.splice(ws.projects.indexOf(p) + 1, 0, c);
+        setMenu(false); switchProject(c.id);
+      }
+      if (a === 'new') { var n = fromTemplate(b.getAttribute('data-t')); ws.projects.push(n); setMenu(false); switchProject(n.id); }
+      if (a === 'delete') {
+        if (ws.projects.length < 2) { toast('Keep at least one bid package.'); return; }
+        if (armed !== 'delete') { armed = 'delete'; b.textContent = 'Confirm delete'; b.classList.add('is-armed'); return; }
+        var idx = ws.projects.indexOf(p), gone = p.name;
+        ws.projects.splice(idx, 1);
+        ws.active = ws.projects[Math.max(0, idx - 1)].id;
+        state = clone(currentProject().state);
+        storeWrite(); setMenu(false); buildMatrix(); recompute(); syncInputs(); renderProjects();
+        toast('Deleted ' + gone + '.');
+      }
+      if (a === 'clear') {
+        if (armed !== 'clear') { armed = 'clear'; b.textContent = 'Click again to clear'; b.classList.add('is-armed'); return; }
+        try { window.localStorage.removeItem(STORE_KEY); } catch (err) { /* storage unavailable */ }
+        seedWorkspace(); storeWrite(); state = clone(currentProject().state);
+        setMenu(false); buildMatrix(); recompute(); syncInputs(); renderProjects();
+        toast('Local data cleared. Templates restored.');
+      }
+    });
+    $('#btnResetTpl').addEventListener('click', function () {
+      var p = currentProject(); if (!p.template || !TEMPLATES[p.template]) return;
+      state = clone(TEMPLATES[p.template].state);
+      buildMatrix(); recompute(); syncInputs();
+      toast('Reset ' + p.name + ' to its template values.');
+    });
+  }
   var result = null, study = null;
 
   /* ================================================================
@@ -117,6 +292,7 @@
     renderBars();
     renderHyd();
     renderStory();
+    saveSoon();
     syncSliderLabels();
   }
 
@@ -343,7 +519,7 @@
   }
 
   function renderCase() {
-    $('#caseTitle').textContent = 'API 610 Process Pump Package — ' + dutyLabel();
+    $('#caseTitle').textContent = state.project.tag + ' · ' + state.project.service + ' — ' + dutyLabel();
   }
 
   /* ================================================================
@@ -431,9 +607,9 @@
     }
     if (o.eff) {
       [0, 20, 40, 60, 80, 100].forEach(function (e) {
-        out.push('<text x="' + (x1 + 8) + '" y="' + (g.ye(e) + 3.5) + '" fill="#5E6167" font-size="10.5">' + e + '</text>');
+        out.push('<text x="' + (x1 + 8) + '" y="' + (g.ye(e) + 3.5) + '" fill="#8E9196" font-size="10.5">' + e + '</text>');
       });
-      out.push('<text x="' + (x1 + 8) + '" y="' + (y1 - 8) + '" fill="#5E6167" font-size="10.5">η %</text>');
+      out.push('<text x="' + (x1 + 8) + '" y="' + (y1 - 8) + '" fill="#8E9196" font-size="10.5">η %</text>');
     }
     out.push('<text x="' + x0 + '" y="' + (y1 - 8) + '" fill="#8E9196" font-size="10.5" text-anchor="middle">H m</text>');
     out.push('<text x="' + x1 + '" y="' + (o.h - 4) + '" fill="#8E9196" font-size="10.5" text-anchor="end">Q m³/h</text>');
@@ -492,10 +668,9 @@
     this.svg.innerHTML = out.join('');
   };
 
-  var hqChart, storyChart;
+  var hqChart;
   function initCharts() {
     hqChart = new Chart($('#hqChart'), { w: 760, h: 440, pad: { l: 52, r: 44, t: 26, b: 42 }, eff: true });
-    storyChart = new Chart($('#storyChart'), { w: 560, h: 280, pad: { l: 42, r: 16, t: 24, b: 40 }, mini: true });
     var svg = $('#hqChart'), tip = $('#chartTip'), host = $('.chart-host');
     var targetQ = null, scrub = 0, lastEv = null;
     function scrubLoop() {
@@ -584,23 +759,166 @@
   /* ================================================================
      Hero
      ================================================================ */
-  // Landing previews always show the untouched sample, so the story stays calm and true.
-  var storyDone = false;
+  /* ================================================================
+     Landing · sticky scrollytelling (live from the Package 01 template)
+     ================================================================ */
+  var storyDone = false, storyCharts = [], storyStudy = null, storyState = null, activeStep = -1;
+  function storyFrames(sfx) {
+    var st = storyState, res = E.evaluate(st), hs = storyStudy;
+    var rec = res.recommended, max = Math.max.apply(null, res.bids.map(function (r) { return r.tco; }));
+    var raw = ['Efficiency at BEP: 81.2 %', 'NPSH3 at rated flow: 4.6 m', 'MAWP: 51 bar g @ 38 °C', 'Material class: S-6', 'Driver: 132 kW, IE3', 'Total price: USD 171,500', 'Delivery: 20 weeks ARO'];
+    var f0 = '<div class="sv sv--parse"><div class="sv__raw mono">' + raw.map(function (l, i) { return '<span style="--i:' + i + '">' + l + '</span>'; }).join('') + '</div>' +
+      '<div class="sv__arrow" aria-hidden="true"><i></i></div>' +
+      '<table class="sv__tbl mono"><thead><tr><th>Bidder</th><th>CapEx</th><th>η BEP</th><th>NPSH3</th><th>10-yr TCO</th></tr></thead><tbody>' +
+      res.bids.map(function (r, i) {
+        var b = st.bids[i];
+        return '<tr class="' + (i === rec ? 'is-rec' : '') + '"><td>' + esc(b.vendor) + '</td><td>' + moneyShort(b.capex) + '</td><td>' + num(b.etaBep, 1) + '%</td><td>' + num(b.npshr, 1) + ' m</td><td>' + moneyShort(r.tco) + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<div class="sv__bars">' + res.bids.map(function (r, i) {
+        return '<div class="sv__bar' + (i === rec ? ' is-rec' : '') + '"><span>' + esc(st.bids[i].vendor) + (i === rec ? ' · recommended' : '') + '</span><i><b style="--w:' + (r.tco / max * 100).toFixed(1) + '%"></b></i></div>';
+      }).join('') + '</div></div>';
+    var m = hs.npshMargin;
+    var f1 = '<div class="sv sv--hyd"><svg id="storyChart' + sfx + '" class="chart" viewBox="0 0 560 300" role="img" aria-label="Pump curve, system curve and operating point for the sample package"></svg>' +
+      '<div class="sv__stats"><div><span class="mono">Operating point</span><b class="mono">' + num(hs.op.Q) + ' m³/h · ' + num(hs.op.H, 1) + ' m</b></div>' +
+      '<div><span class="mono">NPSH margin</span><b class="mono">+' + num(m, 2) + ' m <em class="state state--ok">' + (m >= 1 ? 'SAFE' : 'LOW') + '</em></b></div>' +
+      '<div><span class="mono">VFD at ' + st.hyd.speed + '% vs throttle</span><b class="mono">' + money(hs.saveUsd) + ' / yr</b></div></div></div>';
+    var rb = st.bids[rec];
+    var f2 = '<div class="sv sv--doc"><div class="doc"><span class="doc__mark"></span><span class="doc__title">Award Recommendation</span>' +
+      '<span class="doc__meta mono">' + esc(st.project.tag) + ' · ' + num(st.duty.Q) + ' m³/h @ ' + num(st.duty.H) + ' m</span>' +
+      '<span class="doc__call">Recommend <b>' + esc(rb.vendor + ' (' + rb.model + ')') + '</b> — lowest 10-yr TCO among compliant bids, ' + money(res.bids[rec].tco) + '.</span>' +
+      '<span class="doc__line" style="width:86%"></span><span class="doc__line" style="width:70%"></span><span class="doc__line" style="width:78%"></span>' +
+      '<span class="doc__sign"><i>Prepared</i><i>Checked</i><i>Approved</i></span></div>' +
+      '<ul class="sv__chips mono"><li>Award report</li><li>Supplier RFIs</li><li>CSV matrix</li><li>Audit trail</li></ul></div>';
+    return [f0, f1, f2];
+  }
   function renderStory() {
     if (storyDone) return;
     storyDone = true;
-    var st = clone(SAMPLE), res = E.evaluate(st), hs = E.hydraulicStudy(st, res.recommended);
-    var max = Math.max.apply(null, res.bids.map(function (r) { return r.tco; }));
-    $('#storyBars').innerHTML = res.bids.map(function (r, i) {
-      var b = st.bids[i];
-      return '<div class="sbar' + (i === res.recommended ? ' sbar--rec' : '') + '"><div class="sbar__top"><b>' + esc(b.vendor + ' (' + b.model + ')') + '</b><span>' + money(r.tco) + '</span></div>' +
-        '<div class="sbar__track"><span data-w="' + (r.tco / max * 100).toFixed(1) + '%" style="--d:' + (i * 0.12) + 's"></span></div></div>';
-    }).join('');
-    var rb = st.bids[res.recommended];
-    $('#storyAward').textContent = rb.vendor + ' (' + rb.model + ') · ' + money(res.bids[res.recommended].tco);
-    var live = state; state = st;
-    storyChart.set(chartTarget(hs));
+    storyState = clone(SAMPLE);
+    storyStudy = E.hydraulicStudy(storyState, E.evaluate(storyState).recommended);
+    var stage = storyFrames('S');
+    $('#stageFrames').innerHTML = stage.map(function (h, i) { return '<div class="sframe' + (i === 0 ? ' is-active' : '') + '" data-frame="' + i + '">' + h + '</div>'; }).join('');
+    var inline = storyFrames('M');
+    $$('[data-media]').forEach(function (el) { el.innerHTML = inline[+el.getAttribute('data-media')]; });
+    ['#storyChartS', '#storyChartM'].forEach(function (sel) {
+      var c = new Chart($(sel), { w: 560, h: 300, pad: { l: 42, r: 16, t: 24, b: 40 }, mini: true });
+      storyCharts.push(c);
+    });
+    drawStoryCharts(true);
+    initScrolly();
+  }
+  function drawStoryCharts(instant) {
+    var live = state; state = storyState;
+    var tgt = chartTarget(storyStudy);
     state = live;
+    storyCharts.forEach(function (c) {
+      if (!instant && !reduceMotion) {
+        // morph in: start from flat curves, then ease to the calculated ones
+        var flat = clone(tgt);
+        ['pump', 'full', 'sys'].forEach(function (k) { flat[k] = flat[k].map(function () { return 0; }); });
+        flat.op = tgt.op ? { Q: 0, H: 0 } : null; flat.bep = { Q: 0, H: 0 };
+        c.cur = flat; c.tgt = null; if (c.raf) { cancelAnimationFrame(c.raf); c.raf = 0; }
+      } else c.cur = null;
+      c.set(tgt);
+    });
+  }
+  function setStep(i) {
+    if (i === activeStep) return;
+    activeStep = i;
+    $$('.sstep').forEach(function (s, k) { s.classList.toggle('is-active', k === i); });
+    $$('.sframe').forEach(function (f, k) { f.classList.toggle('is-active', k === i); });
+    $('#stageIdx').textContent = '0' + (i + 1);
+    if (i === 1) drawStoryCharts(false);
+  }
+  function initScrolly() {
+    var steps = $$('.sstep'), wrap = $('.scrolly'), prog = $('#stageProg'), ticking = false;
+    function update() {
+      ticking = false;
+      var vh = window.innerHeight, mid = vh * 0.5, best = 0, bestD = 1e9;
+      steps.forEach(function (s, k) {
+        var r = s.getBoundingClientRect(), c = r.top + r.height / 2, d = Math.abs(c - mid);
+        if (d < bestD) { bestD = d; best = k; }
+      });
+      setStep(best);
+      var wr = wrap.getBoundingClientRect();
+      var p = Math.min(1, Math.max(0, (mid - wr.top) / Math.max(1, wr.height)));
+      prog.style.transform = 'scaleX(' + p.toFixed(3) + ')';
+      if (wr.top < vh && wr.bottom > 0) $$('.sv__bar b, .sv__raw span').forEach(function (b) { b.classList.add('is-on'); });
+    }
+    window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  }
+
+  /* ================================================================
+     Vernier scroll rail (01–05) and CAD reticle cursor
+     ================================================================ */
+  function initRail() {
+    var rail = $('#rail'); if (!rail) return;
+    var links = $$('a', rail), ind = $('#railInd'), ticking = false;
+    var targets = links.map(function (a) { var id = a.getAttribute('data-target'); return id === 'top' ? doc.body : $('#' + id); });
+    links.forEach(function (a, i) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var y = i === 0 ? 0 : targets[i].getBoundingClientRect().top + window.scrollY - 96;
+        window.scrollTo({ top: y, behavior: reduceMotion ? 'auto' : 'smooth' });
+      });
+    });
+    function update() {
+      ticking = false;
+      var y = window.scrollY + window.innerHeight * 0.35;
+      var tops = targets.map(function (t, i) { return i === 0 ? 0 : t.getBoundingClientRect().top + window.scrollY; });
+      var maxY = doc.documentElement.scrollHeight - window.innerHeight;
+      var pos = 0;
+      for (var i = 0; i < tops.length; i++) {
+        var next = i + 1 < tops.length ? tops[i + 1] : maxY + window.innerHeight * 0.35;
+        if (y >= tops[i]) pos = i + Math.min(1, (y - tops[i]) / Math.max(1, next - tops[i]));
+      }
+      if (window.scrollY >= maxY - 2) pos = tops.length - 1;
+      var f = Math.min(1, pos / (tops.length - 1));
+      ind.style.transform = 'translateY(' + (f * (rail.clientHeight - 2)).toFixed(1) + 'px)';
+      var act = Math.min(tops.length - 1, Math.round(pos - 0.2 < 0 ? 0 : Math.floor(pos + 0.0001)));
+      links.forEach(function (a, k) { a.classList.toggle('is-active', k === act); });
+    }
+    window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  }
+  function initReticle() {
+    if (reduceMotion || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    var r = $('#reticle'), lab = $('#reticleLab'); if (!r) return;
+    var cur = { x: 0, y: 0 }, tgt = { x: 0, y: 0 }, raf = 0, zone = null;
+    doc.documentElement.classList.add('has-reticle');
+    function loop() {
+      cur.x += (tgt.x - cur.x) * 0.35; cur.y += (tgt.y - cur.y) * 0.35;
+      r.style.transform = 'translate(' + cur.x.toFixed(1) + 'px,' + cur.y.toFixed(1) + 'px)';
+      raf = zone && (Math.abs(tgt.x - cur.x) + Math.abs(tgt.y - cur.y) > 0.2) ? requestAnimationFrame(loop) : 0;
+    }
+    function readout(z, e) {
+      var b = z.getBoundingClientRect();
+      if (z.getAttribute('data-reticle') === 'chart') {
+        var c = storyCharts[0], svg = $('svg', z);
+        if (c && c.cur && svg) {
+          var sb = svg.getBoundingClientRect(), g = c.geom();
+          var vx = (e.clientX - sb.left) / sb.width * c.o.w, vy = (e.clientY - sb.top) / sb.height * c.o.h;
+          var q = g.q(vx), h = (c.o.h - g.p.b - vy) / (c.o.h - g.p.t - g.p.b) * c.cur.hMax;
+          if (q >= 0 && q <= c.cur.qMax && h >= 0 && h <= c.cur.hMax) return 'Q ' + num(q) + ' m³/h · H ' + num(h, 1) + ' m';
+        }
+        return '';
+      }
+      return 'X ' + ((e.clientX - b.left) / b.width).toFixed(3) + ' · Y ' + ((e.clientY - b.top) / b.height).toFixed(3);
+    }
+    function enter(e) { zone = e.currentTarget; r.classList.add('is-on'); cur.x = tgt.x = e.clientX; cur.y = tgt.y = e.clientY; move(e); }
+    function move(e) {
+      tgt.x = e.clientX; tgt.y = e.clientY;
+      lab.textContent = readout(e.currentTarget, e);
+      if (!raf) raf = requestAnimationFrame(loop);
+    }
+    function leave() { zone = null; r.classList.remove('is-on'); }
+    function bindZone(z) { z.addEventListener('pointerenter', enter); z.addEventListener('pointermove', move); z.addEventListener('pointerleave', leave); }
+    $$('[data-reticle]').forEach(bindZone);
+    var stageChart = $('.sframe[data-frame="1"]');
+    if (stageChart) { stageChart.setAttribute('data-reticle', 'chart'); bindZone(stageChart); }
   }
 
   /* ================================================================
@@ -627,6 +945,7 @@
     $$('.tabpanel').forEach(function (p) { p.hidden = p.id !== 'panel-' + name; });
     if (name === 'hyd' && hqChart) { hqChart.cur = null; hqChart.set(chartTarget(study)); }
     moveInk();
+    if (appOpen && $('#app').scrollTop > 0) $('#app').scrollTo({ top: 0 });
     if (!keepHash && appOpen) history.replaceState(history.state, '', '#studio/' + TAB_SLUG[name]);
   }
 
@@ -714,12 +1033,7 @@
     });
   }
 
-  function loadSample() {
-    state = clone(SAMPLE);
-    buildMatrix();
-    recompute();
-    syncInputs();
-  }
+  function loadSample() { openTemplateProject('p01'); }
 
   /* ================================================================
      Modal
@@ -1087,24 +1401,42 @@
     return out;
   }
 
+  // Azure: AI Foundry model inference, Azure OpenAI deployments, or the Azure OpenAI v1 API.
+  var AZ_DEFAULT_VER = { foundry: '2024-05-01-preview', aoai: '2024-10-21', v1: '' };
+  function azureUrl(mode, ep, dep, ver) {
+    ep = ep.replace(/\?.*$/, '').replace(/\/+$/, '');
+    if (/\/chat\/completions$/.test(ep)) {
+      // full URL pasted: the v1 route takes no dated api-version
+      return { url: /\/openai\/v1\//.test(ep) ? ep : ep + '?api-version=' + encodeURIComponent(ver || AZ_DEFAULT_VER.aoai), model: !/\/openai\/deployments\//.test(ep) };
+    }
+    ep = ep.replace(/\/api\/projects\/[^/]+$/, '').replace(/\/(models|openai(\/v1)?)$/, '');
+    if (mode === 'foundry') return { url: ep + '/models/chat/completions?api-version=' + encodeURIComponent(ver || AZ_DEFAULT_VER.foundry), model: true };
+    if (mode === 'v1') return { url: ep + '/openai/v1/chat/completions', model: true };
+    return { url: ep + '/openai/deployments/' + encodeURIComponent(dep) + '/chat/completions?api-version=' + encodeURIComponent(ver || AZ_DEFAULT_VER.aoai), model: false };
+  }
   function callAzure(text) {
-    var mode = $('#azMode').value, ep = $('#azEndpoint').value.trim().replace(/\/+$/, ''), dep = $('#azDeployment').value.trim(), ver = $('#azVersion').value.trim() || '2024-10-21';
+    var mode = $('#azMode').value, ep = $('#azEndpoint').value.trim(), dep = $('#azDeployment').value.trim(), ver = $('#azVersion').value.trim();
+    var auth = $('#azAuth').value;
     keys.azure = $('#azKey').value || keys.azure;
     if (!/^https:\/\//i.test(ep)) return Promise.reject(new Error('Enter an https:// endpoint URL.'));
     if (!dep) return Promise.reject(new Error('Enter the deployment or model name.'));
-    if (!keys.azure) return Promise.reject(new Error('Enter an API key.'));
-    var url;
-    if (/\/chat\/completions/.test(ep)) url = ep + (ep.indexOf('?') < 0 ? '?api-version=' + encodeURIComponent(ver) : '');
-    else if (mode === 'foundry') url = ep + '/models/chat/completions?api-version=' + encodeURIComponent(ver);
-    else url = ep + '/openai/deployments/' + encodeURIComponent(dep) + '/chat/completions?api-version=' + encodeURIComponent(ver);
+    if (!keys.azure) return Promise.reject(new Error(auth === 'entra' ? 'Paste a Microsoft Entra ID access token.' : 'Enter an API key.'));
+    var u = azureUrl(mode, ep, dep, ver);
     var body = { messages: [{ role: 'system', content: SYS_PROMPT }, { role: 'user', content: text }], temperature: 0, response_format: { type: 'json_object' } };
-    if (mode === 'foundry') body.model = dep;
-    var send = function (b) {
-      return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'api-key': keys.azure }, body: JSON.stringify(b) });
-    };
+    if (u.model) body.model = dep;
+    var headers = { 'Content-Type': 'application/json' };
+    if (auth === 'entra') headers.Authorization = 'Bearer ' + keys.azure.replace(/^Bearer\s+/i, '');
+    else headers['api-key'] = keys.azure;
+    var send = function (b) { return fetch(u.url, { method: 'POST', headers: headers, body: JSON.stringify(b) }); };
     return send(body).then(function (res) {
-      if (res.status === 400) { delete body.temperature; delete body.response_format; return send(body); }
-      return res;
+      if (res.status !== 400) return res;
+      // Retry once without optional parameters only when the model rejects them (e.g. reasoning models).
+      return res.clone().text().then(function (t) {
+        if (/unsupported_(parameter|value)|temperature|response_format/i.test(t)) {
+          delete body.temperature; delete body.response_format; return send(body);
+        }
+        return res;
+      });
     }).then(handleHttp).then(function (j) {
       var c = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
       if (!c) throw new Error('Empty response from Azure.');
@@ -1179,10 +1511,18 @@
       });
     });
     $('#gmModel').addEventListener('change', function () { $('#gmCustomWrap').hidden = this.value !== 'custom'; });
+    var lastAutoVer = $('#azVersion').value;
     $('#azMode').addEventListener('change', function () {
-      $('#azVersion').value = this.value === 'foundry' ? '2024-05-01-preview' : '2024-10-21';
+      var v = $('#azVersion');
+      if (v.value === lastAutoVer) { v.value = AZ_DEFAULT_VER[this.value]; lastAutoVer = v.value; }  // keep a version the user typed
+      $('#azVersionWrap').hidden = this.value === 'v1';
       $('#azEndpoint').placeholder = this.value === 'foundry' ? 'https://your-resource.services.ai.azure.com' : 'https://your-resource.openai.azure.com';
     });
+    $('#azAuth').addEventListener('change', function () {
+      $('#azKeyLabel').textContent = this.value === 'entra' ? 'Entra ID access token' : 'API key';
+      keys.azure = ''; $('#azKey').value = '';
+    });
+    bindUpload();
     $('#btnSampleQuote').addEventListener('click', function () { $('#quoteText').value = SAMPLE_QUOTE; setStatus('Sample quotation inserted (fictional vendor). Run the parser.'); });
     $('#btnClearQuote').addEventListener('click', function () { $('#quoteText').value = ''; parsed = null; renderParse(null); $('#btnInsert').disabled = true; setStatus('Cleared.'); });
     $('#btnForgetKeys').addEventListener('click', function () {
@@ -1241,29 +1581,140 @@
   }
 
   /* ================================================================
+     Pilot / onboarding request (nothing is sent until the user sends it)
+     ================================================================ */
+  var PILOT_TO = 'founders@myeng.online';
+  function pilotText(f) {
+    var tier = f.tier === 'enterprise' ? 'Enterprise / EPC ($349 / month)' : 'Pro Engineer ($79 / month)';
+    var lines = [
+      'Subject: MYENG pilot request — ' + (f.tier === 'enterprise' ? 'Enterprise / EPC' : 'Pro Engineer') + (f.company ? ' — ' + f.company : ''),
+      '',
+      'Hello MYENG founders,',
+      '',
+      'We would like to discuss a pilot of MYENG.',
+      '',
+      'Plan of interest: ' + tier,
+      'Organisation: ' + (f.company || '[company]'),
+      'Engineers who would use it: ' + f.team,
+      'Pumps evaluated per year: ' + f.volume,
+      'Extraction preference: ' + f.cloud,
+      'Typical standards: ' + f.std,
+      ''
+    ];
+    if (f.notes) { lines.push('Notes:', f.notes, ''); }
+    lines.push('Regards,', f.name || '[name]');
+    return lines.join('\n');
+  }
+  function openPilot(tier) {
+    var opt = function (arr, sel) { return arr.map(function (v) { return '<option' + (v === sel ? ' selected' : '') + '>' + v + '</option>'; }).join(''); };
+    var body =
+      '<div class="pilot">' +
+      '<p class="pilot__intro">Tell us about your team. This builds an email you send yourself — nothing leaves this page until you do.</p>' +
+      '<div class="pilot__seg" role="radiogroup" aria-label="Plan">' +
+      '<label><input type="radio" name="ptier" value="pro"' + (tier !== 'enterprise' ? ' checked' : '') + '><span><b>Pro Engineer</b><em>$79 / month</em></span></label>' +
+      '<label><input type="radio" name="ptier" value="enterprise"' + (tier === 'enterprise' ? ' checked' : '') + '><span><b>Enterprise / EPC</b><em>$349 / month</em></span></label></div>' +
+      '<div class="pilot__grid">' +
+      '<label><span>Organisation</span><input type="text" id="pCompany" autocomplete="organization" placeholder="Company name"></label>' +
+      '<label><span>Your name</span><input type="text" id="pName" autocomplete="name" placeholder="Name"></label>' +
+      '<label><span>Engineers</span><select id="pTeam">' + opt(['1', '2–5', '6–20', '20+'], '2–5') + '</select></label>' +
+      '<label><span>Pumps evaluated / year</span><select id="pVolume">' + opt(['Fewer than 10', '10–50', '50–200', '200+'], '10–50') + '</select></label>' +
+      '<label class="pilot__wide"><span>Extraction preference</span><select id="pCloud">' +
+      opt(['Microsoft Azure AI Foundry — managed by MYENG', 'Microsoft Azure AI Foundry — private, in our tenant', 'Bring our own key (Azure OpenAI or Gemini)', 'Local parser only — no cloud'], tier === 'enterprise' ? 'Microsoft Azure AI Foundry — private, in our tenant' : 'Microsoft Azure AI Foundry — managed by MYENG') + '</select></label>' +
+      '<label class="pilot__wide"><span>Standards</span><select id="pStd">' + opt(['API 610', 'ISO 5199', 'API 610 and ISO 5199', 'Company / site specification'], 'API 610 and ISO 5199') + '</select></label>' +
+      '<label class="pilot__wide"><span>Notes (optional)</span><textarea id="pNotes" rows="3" placeholder="Projects, timelines, approval workflow…"></textarea></label>' +
+      '</div>' +
+      '<p class="pilot__h mono">Email preview · to ' + PILOT_TO + '</p>' +
+      '<textarea id="pPreview" class="pilot__preview" readonly aria-label="Email preview"></textarea></div>';
+    openModal('Request Pilot / Onboarding', body, [
+      { label: 'Copy inquiry', run: function () { copyText($('#pPreview').value); } },
+      { label: 'Open in email', cls: 'btn--ink', run: function () {
+        var t = $('#pPreview').value, sub = t.split('\n')[0].replace(/^Subject:\s*/, ''), bd = t.split('\n').slice(2).join('\n');
+        window.location.href = 'mailto:' + PILOT_TO + '?subject=' + encodeURIComponent(sub) + '&body=' + encodeURIComponent(bd);
+      } }
+    ]);
+    var read = function () {
+      return {
+        tier: ($('input[name=ptier]:checked') || {}).value, company: $('#pCompany').value.trim(), name: $('#pName').value.trim(),
+        team: $('#pTeam').value, volume: $('#pVolume').value, cloud: $('#pCloud').value, std: $('#pStd').value, notes: $('#pNotes').value.trim()
+      };
+    };
+    var upd = function () { $('#pPreview').value = pilotText(read()); };
+    $('#modalBody').addEventListener('input', upd);
+    $('#modalBody').addEventListener('change', upd);
+    upd();
+  }
+
+  /* ================================================================
+     Parser file input & drag-and-drop (.txt / .csv, read locally)
+     ================================================================ */
+  function csvToText(txt) {
+    return txt.split(/\r?\n/).map(function (row) {
+      var cells = [], cur = '', q = false;
+      for (var i = 0; i < row.length; i++) {
+        var ch = row[i];
+        if (ch === '"') { if (q && row[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+        else if ((ch === ',' || ch === ';' || ch === '\t') && !q) { cells.push(cur.trim()); cur = ''; }
+        else cur += ch;
+      }
+      cells.push(cur.trim());
+      cells = cells.filter(function (c) { return c !== ''; });
+      return cells.length > 1 ? cells[0] + ': ' + cells.slice(1).join(' ') : (cells[0] || '');
+    }).join('\n');
+  }
+  function loadQuoteFile(file) {
+    if (!file) return;
+    var name = file.name || 'file', ext = (name.split('.').pop() || '').toLowerCase();
+    if (['txt', 'csv'].indexOf(ext) < 0) { setStatus('Only .txt and .csv files are supported (got .' + esc(ext) + '). Export PDFs to text first.', true); return; }
+    if (file.size > 1024 * 1024) { setStatus('File is larger than 1 MB. Paste the relevant section instead.', true); return; }
+    var fr = new FileReader();
+    fr.onload = function () {
+      var t = String(fr.result || '');
+      $('#quoteText').value = ext === 'csv' ? csvToText(t) : t;
+      setStatus('Loaded ' + name + ' (' + num(file.size / 1024, 1) + ' KB) locally. Run the parser.');
+    };
+    fr.onerror = function () { setStatus('Could not read ' + name + '.', true); };
+    fr.readAsText(file);
+  }
+  function bindUpload() {
+    var dz = $('#dropZone'), fi = $('#fileQuote');
+    $('#btnUpload').addEventListener('click', function () { fi.click(); });
+    fi.addEventListener('change', function () { loadQuoteFile(fi.files[0]); fi.value = ''; });
+    var depth = 0;
+    dz.addEventListener('dragenter', function (e) { e.preventDefault(); depth++; dz.classList.add('is-over'); });
+    dz.addEventListener('dragover', function (e) { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; });
+    dz.addEventListener('dragleave', function () { depth = Math.max(0, depth - 1); if (!depth) dz.classList.remove('is-over'); });
+    dz.addEventListener('drop', function (e) {
+      e.preventDefault(); depth = 0; dz.classList.remove('is-over');
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) loadQuoteFile(f);
+    });
+  }
+
+  /* ================================================================
      Legal
      ================================================================ */
   var LEGAL = {
-    privacy: ['Privacy Policy', '<p class="rep__meta mono">Effective 1 November 2026 · MYENG, Amman, Jordan and Jubail, Saudi Arabia</p>' +
-      '<h3>Summary</h3><p>The MYENG website and Sandbox Studio run entirely in your browser. We do not operate a server that receives your engineering inputs, vendor quotations, prices or API keys.</p>' +
-      '<h3>What stays in your browser</h3><ul><li>All Studio inputs, calculations, reports and exports are processed in page memory and discarded when you close or reload the tab.</li>' +
-      '<li>We do not use cookies, localStorage, analytics, advertising pixels or session recording.</li>' +
-      '<li>CSV and report files are generated locally and saved only where you choose.</li></ul>' +
-      '<h3>Bring-your-own-key (BYOK) extraction</h3><ul><li>API keys you enter for Microsoft Azure or Google Gemini are held in JavaScript memory for the current tab only. They are never written to storage and never sent to MYENG.</li>' +
-      '<li>If you choose a cloud provider, the quotation text you submit is sent directly from your browser to that provider\'s endpoint under your own account. That provider\'s terms and data-retention policies apply — including, for some unpaid tiers, use of content to improve their products.</li>' +
-      '<li>The local parser sends nothing over the network.</li></ul>' +
-      '<h3>Third-party resources</h3><p>The site is served by GitHub Pages and loads typefaces from Google Fonts. These services receive standard request data such as your IP address and user agent under their own privacy policies.</p>' +
-      '<h3>Email</h3><p>If you write to founders@myeng.online we keep the correspondence to respond to you and do not share it.</p>' +
-      '<h3>Paid plans</h3><p>Pro and Enterprise features that store data (saved workspaces, managed extraction) are provided under a separate written agreement that sets out processing, retention and deletion terms.</p>' +
-      '<h3>Contact</h3><p>founders@myeng.online</p>'],
-    terms: ['Terms of Service', '<p class="rep__meta mono">Effective 1 November 2026 · MYENG, Amman, Jordan and Jubail, Saudi Arabia</p>' +
-      '<h3>1. The service</h3><p>MYENG provides engineering calculation and bid-evaluation tools for rotating equipment. The Sandbox is provided free of charge, as is, for evaluation and professional use.</p>' +
-      '<h3>2. Engineering responsibility</h3><p>Results are calculated from the inputs you provide using the formulas documented in the Studio and in every audit report. They support, and do not replace, the judgement of a qualified engineer, vendor-certified performance data, witnessed testing, or your company\'s specifications. You remain responsible for decisions made using the outputs.</p>' +
-      '<h3>3. Sample data</h3><p>The preloaded case study uses anonymised bidders and illustrative figures. They are not vendor-published data and refer to no real manufacturer.</p>' +
-      '<h3>4. Your data and keys</h3><p>Browser sessions are not retained by MYENG. When you use your own Azure or Gemini key, you are responsible for complying with that provider\'s terms and for the content you submit.</p>' +
-      '<h3>5. Acceptable use</h3><p>Do not attempt to disrupt the site, misrepresent outputs as vendor-certified, or use the service in breach of applicable law or confidentiality obligations.</p>' +
-      '<h3>6. Liability</h3><p>To the extent permitted by law, MYENG is not liable for indirect or consequential loss arising from use of the free Sandbox. Paid plans are governed by their order form.</p>' +
-      '<h3>7. Changes</h3><p>We may update these terms; the effective date above will change accordingly.</p>' +
+    privacy: ['Privacy Policy', '<p class="rep__meta mono">Effective 1 December 2026 · MYENG is operated by its founders from Amman, Jordan and Jubail, Saudi Arabia</p>' +
+      '<h3>Summary</h3><p>The MYENG website and Sandbox Studio run in your browser. There is no MYENG server that receives your engineering inputs, vendor quotations, prices or API keys.</p>' +
+      '<h3>What stays on your device</h3><ul><li>Calculations, reports and exports are produced in the page and saved only where you choose.</li>' +
+      '<li>Bid packages you create are saved in your browser\'s localStorage on this device so you can return to them. They are never uploaded. Use “Clear local data” in the Studio package menu, or clear site data in your browser, to remove them.</li>' +
+      '<li>We do not use cookies, analytics, advertising pixels or session recording.</li></ul>' +
+      '<h3>Bring-your-own-key extraction</h3><ul><li>API keys and access tokens you enter for Microsoft Azure or Google Gemini are held in JavaScript memory for the current tab only. They are never written to storage and never sent to MYENG.</li>' +
+      '<li>If you choose a cloud provider, the quotation text you submit is sent directly from your browser to that provider\'s endpoint under your own account. That provider\'s terms and retention policies apply — for example Azure abuse-monitoring logs, or use of content to improve products on some unpaid Gemini tiers.</li>' +
+      '<li>The local parser sends nothing over the network. Files you drop into the parser are read locally.</li></ul>' +
+      '<h3>Third-party resources</h3><p>The site is served by GitHub Pages and loads typefaces from Google Fonts. These services receive standard request data such as IP address and user agent under their own policies.</p>' +
+      '<h3>Correspondence</h3><p>If you email founders@myeng.online — including a pilot request you compose on this site — we keep the correspondence to reply and do not share it. You may ask us to delete it at any time; we respond within 30 days. We aim to follow the Jordanian Personal Data Protection Law and the Saudi Personal Data Protection Law where they apply.</p>' +
+      '<h3>Paid plans</h3><p>Pro and Enterprise features that store data (synced workspaces, managed extraction) are provided under a separate written agreement that sets out processing, retention and deletion terms.</p>' +
+      '<h3>Contact &amp; security</h3><p>founders@myeng.online — including reports of security vulnerabilities.</p>'],
+    terms: ['Terms of Service', '<p class="rep__meta mono">Effective 1 December 2026 · MYENG, Amman, Jordan and Jubail, Saudi Arabia</p>' +
+      '<h3>1. The service</h3><p>MYENG provides engineering calculation and bid-evaluation tools for rotating equipment. The Sandbox is free and is provided without warranty of any kind, including fitness for a particular purpose.</p>' +
+      '<h3>2. Engineering responsibility</h3><p>Results are calculated from your inputs using the formulas documented in the Studio and in every audit report. MYENG checks a simplified subset of API 610 criteria and does not verify vendor data, test results or mechanical design. Outputs support, and do not replace, the judgement of a qualified engineer, vendor-certified performance data, witnessed testing and your company\'s specifications.</p>' +
+      '<h3>3. Sample data</h3><p>The bid-package templates use anonymised bidders and illustrative figures. They are not vendor-published data and refer to no real manufacturer.</p>' +
+      '<h3>4. Your data and keys</h3><p>Browser sessions are not retained by MYENG. When you use your own Azure or Gemini credentials you are responsible for complying with that provider\'s terms and for the content you submit.</p>' +
+      '<h3>5. Acceptable use</h3><p>Do not attempt to disrupt the site, misrepresent outputs as vendor-certified, or use the service in breach of law or confidentiality obligations.</p>' +
+      '<h3>6. Liability</h3><p>To the extent permitted by law, MYENG is not liable for indirect or consequential loss arising from use of the free Sandbox. Paid plans are governed by their written order form.</p>' +
+      '<h3>7. Trademarks</h3><p>API 610 is a standard of the American Petroleum Institute; ISO 5199 of the International Organization for Standardization. Azure is a trademark of Microsoft and Gemini of Google. MYENG is not affiliated with or endorsed by them.</p>' +
+      '<h3>8. Governing law</h3><p>These terms are governed by the laws of the Hashemite Kingdom of Jordan, unless a written order form states otherwise.</p>' +
       '<h3>Contact</h3><p>founders@myeng.online</p>']
   };
 
@@ -1274,13 +1725,11 @@
     var els = $$('.reveal, .wordmark');
     if (!('IntersectionObserver' in window) || reduceMotion) {
       els.forEach(function (el) { el.classList.add('is-in'); });
-      fillBars();
     } else {
       var io = new IntersectionObserver(function (es) {
         es.forEach(function (e) {
           if (!e.isIntersecting) return;
           e.target.classList.add('is-in'); io.unobserve(e.target);
-          if (e.target.querySelector && e.target.querySelector('#storyBars')) setTimeout(fillBars, 250);
         });
       }, { rootMargin: '0px 0px -10% 0px', threshold: 0.12 });
       els.forEach(function (el) { io.observe(el); });
@@ -1289,7 +1738,6 @@
     var onScroll = function () { nav.classList.toggle('is-scrolled', window.scrollY > 24); };
     window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
   }
-  function fillBars() { $$('#storyBars [data-w]').forEach(function (s) { s.style.width = s.getAttribute('data-w'); }); }
 
   /* Magnetic primary pills: drift up to ~6px toward the pointer, damped. */
   function initMagnetic() {
@@ -1482,6 +1930,7 @@
     $('#reqMaterial').innerHTML = E.MATERIAL_CLASSES.map(function (m) { return '<option>' + m + '</option>'; }).join('');
     $('#hydVendor').innerHTML = '<option value="rec">Recommended</option>' + [0, 1, 2].map(function (i) { return '<option value="' + i + '">Bid ' + 'ABC'[i] + '</option>'; }).join('');
     $('#year').textContent = new Date().getFullYear();
+    initWorkspace();
     initCharts();
     buildSliders();
     buildMatrix();
@@ -1490,6 +1939,7 @@
     bindNav();
     bindDeliverables();
     bindParser();
+    bindProjects();
     recompute();
     syncInputs();
 
@@ -1504,6 +1954,9 @@
     initTilt();
     initMagnetic();
     initFlowField();
+    initRail();
+    initReticle();
+    $$('[data-pilot]').forEach(function (b) { b.addEventListener('click', function () { openPilot(b.getAttribute('data-pilot')); }); });
     route();
     requestAnimationFrame(function () { doc.documentElement.classList.add('is-ready'); doc.body.classList.add('is-ready'); });
   }
