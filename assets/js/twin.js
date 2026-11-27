@@ -149,6 +149,22 @@
       }
       ctx.fillStyle = color; ctx.fillText(txt, x, y);
     }
+    function pin(ax, ay, x, y, key, val, align, alert) {
+      var col = alert ? C.verm : C.muted;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(x, y); ctx.strokeStyle = col; ctx.lineWidth = 1 / cvs.scale; ctx.stroke();
+      ctx.beginPath(); ctx.arc(ax, ay, 2.6, 0, TAU); ctx.fillStyle = col; ctx.fill();
+      var fs = 11 / cvs.scale, fv = 13 / cvs.scale;
+      ctx.font = '500 ' + fs.toFixed(1) + 'px "JetBrains Mono", monospace'; var wk = ctx.measureText(key + '  ').width;
+      ctx.font = '600 ' + fv.toFixed(1) + 'px "JetBrains Mono", monospace'; var wv = ctx.measureText(val).width;
+      var wd = wk + wv, padx = 8 / cvs.scale, hh = fv + 12 / cvs.scale;
+      var bx = align === 'right' ? x - wd - padx * 2 : align === 'center' ? x - wd / 2 - padx : x;
+      var by = y + (y < ay ? -hh : 0);
+      ctx.fillStyle = 'rgba(17,18,20,.94)'; ctx.fillRect(bx, by, wd + padx * 2, hh);
+      ctx.strokeStyle = alert ? C.verm : C.hair; ctx.lineWidth = 1 / cvs.scale; ctx.strokeRect(bx, by, wd + padx * 2, hh);
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      ctx.font = '500 ' + fs.toFixed(1) + 'px "JetBrains Mono", monospace'; ctx.fillStyle = alert ? C.stone : C.muted; ctx.fillText(key, bx + padx, by + hh / 2);
+      ctx.font = '600 ' + fv.toFixed(1) + 'px "JetBrains Mono", monospace'; ctx.fillStyle = C.stone; ctx.fillText(val, bx + padx + wk, by + hh / 2);
+    }
     function leader(x1, y1, x2, y2, color) {
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke();
       ctx.beginPath(); ctx.arc(x1, y1, 2.5, 0, TAU); ctx.fillStyle = color; ctx.fill();
@@ -159,9 +175,9 @@
       var c = cur, wide = cvs.cssW >= 640;
       cvs.clear();
       // drafting grid
-      ctx.strokeStyle = 'rgba(40,43,49,.55)'; ctx.lineWidth = 1;
-      for (var gx = 0; gx <= W; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
-      for (var gy = 0; gy <= H; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+      ctx.strokeStyle = 'rgba(40,43,49,.38)'; ctx.lineWidth = 1;
+      for (var gx = 0; gx <= W; gx += 80) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+      for (var gy = 0; gy <= H; gy += 80) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
       // axis centreline
       ctx.setLineDash([18, 5, 3, 5]); ctx.strokeStyle = C.hair; ctx.beginPath(); ctx.moveTo(10, P.y); ctx.lineTo(W - 10, P.y); ctx.stroke(); ctx.setLineDash([]);
 
@@ -188,9 +204,7 @@
       var lb = clamp(c.load, 0, 1);
       ctx.fillStyle = C.hair; ctx.fillRect(922, P.y + 40, 54, 6);
       ctx.fillStyle = c.load > 1 ? C.verm : C.stone; ctx.fillRect(922, P.y + 40, 54 * lb, 6);
-      ctx.fillStyle = C.stone; ctx.font = '600 13px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(Math.round(c.speed * 100) + '%', 949, P.y - 39);
-      ctx.fillStyle = C.muted; ctx.font = '500 9px "JetBrains Mono", monospace'; ctx.fillText('LOAD', 949, P.y + 28);
+      ctx.fillStyle = C.hair; for (var ln = 0; ln < 3; ln++) ctx.fillRect(922, P.y - 44 + ln * 7, 34 - ln * 8, 2);
       ctx.beginPath(); ctx.moveTo(884, P.y); ctx.lineTo(910, P.y); ctx.strokeStyle = C.muted; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
 
       // discharge pipe
@@ -231,18 +245,13 @@
         ctx.fillStyle = 'rgba(224,70,25,.16)'; ctx.fill();
       }
 
-      // pinned CAD callouts (canvas only on wide layouts; HTML tags carry the same data)
+      // four pinned readouts: rpm & VFD, flow, NPSH margin, discharge velocity
       if (wide) {
-        var eyeCol = c.margin < 1 ? C.verm : C.muted;
-        leader(P.x - EYE * 0.7, P.y + EYE * 0.7, 200, P.y + 122, eyeCol);
-        label(c.margin < 1 ? 'CAVITATION ONSET · EYE ZONE' : 'NPSH SAFE · EYE ZONE', 200, P.y + 136, c.margin < 1 ? C.stone : C.muted, 'center', c.margin < 1 ? C.verm : null);
-        label('margin ' + (tgt.margin >= 0 ? '+' : '') + tgt.margin.toFixed(2) + ' m', 200, P.y + 158, c.margin < 1 ? C.verm : C.muted, 'center');
-        label('SUCTION · Ø' + Math.round(tgt.Ds) + ' · ' + tgt.vSuc.toFixed(2) + ' m/s', 18, P.y - hs - 26, C.muted, 'left');
-        label('IMPELLER Ø≈' + Math.round(tgt.d2) + ' mm · ' + Math.round(tgt.rpm).toLocaleString('en-US') + ' rpm', P.x, P.y + VOUT1 + 26, C.muted, 'center');
-        label('DISCHARGE · H ' + tgt.H.toFixed(1) + ' m · ' + tgt.vDis.toFixed(2) + ' m/s', 980, D_Y - hd - 22, ero ? C.verm : C.muted, 'right');
-        if (ero) label('EROSION RISK · >3.5 m/s', 860, D_Y + hd + 24, C.stone, 'right', C.verm);
-        label('MOTOR ' + Math.round(tgt.motorKw) + ' kW · SHAFT ' + tgt.shaftKw.toFixed(1) + ' kW', 775, P.y + 78, c.load > 1 ? C.verm : C.muted, 'center');
-        label('VFD', 949, P.y - 76, C.muted, 'center');
+        var cavOn = c.margin < 1, eroOn = !!tgt.erosion;
+        pin(P.x - EYE * 0.7, P.y + EYE * 0.7, 210, P.y + 128, cavOn ? 'CAVITATION ONSET · NPSH' : 'NPSH MARGIN', (tgt.margin >= 0 ? '+' : '') + tgt.margin.toFixed(2) + ' m', 'center', cavOn);
+        pin(110, P.y - c.hs - 2, 110, P.y - c.hs - 34, 'FLOW Q', Math.round(tgt.flow).toLocaleString('en-US') + ' m³/h', 'left', false);
+        pin(860, D_Y - c.hd, 860, D_Y - c.hd - 30, eroOn ? 'EROSION RISK · v' : 'DISCHARGE v', tgt.vDis.toFixed(2) + ' m/s', 'right', eroOn);
+        pin(775, P.y + 58, 775, P.y + 96, 'SPEED', Math.round(tgt.rpm).toLocaleString('en-US') + ' rpm · VFD ' + tgt.speedPct + '%', 'center', false);
       }
     }
 

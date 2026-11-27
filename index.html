@@ -21,13 +21,9 @@
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
-    <symbol id="m-mark" viewBox="0 0 48 48">
-      <g fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="bevel">
-        <path d="M6 42V6l18 29L42 6v36"/>
-        <path d="M14 42V6l10 16.1L34 6v36"/>
-      </g>
-      <path d="M24 22.1 34 6" fill="none" stroke="#E04619" stroke-width="4"/>
-    </symbol>
+    <clipPath id="m-clip"><rect x="4" y="6" width="40" height="36"/></clipPath>
+    <symbol id="m-mark" viewBox="0 0 48 48"><g clip-path="url(#m-clip)" fill="none" stroke-width="5.5" stroke-linejoin="miter" stroke-miterlimit="12"><path stroke="currentColor" d="M6.75 42V6L24 33L41.25 6V42"/><path stroke="currentColor" d="M15.25 42V6L24 19.7L32.75 6V42"/><path stroke="#E04619" d="M24 33L41.25 6"/></g></symbol>
+    <symbol id="m-mark-tight" viewBox="4 6 40 36"><g clip-path="url(#m-clip)" fill="none" stroke-width="5.5" stroke-linejoin="miter" stroke-miterlimit="12"><path stroke="currentColor" d="M6.75 42V6L24 33L41.25 6V42"/><path stroke="currentColor" d="M15.25 42V6L24 19.7L32.75 6V42"/><path stroke="#E04619" d="M24 33L41.25 6"/></g></symbol>
   </defs>
 </svg>
 
@@ -204,14 +200,14 @@
 
 <footer class="foot" id="contact" data-rail="05">
   <div class="wrap foot__line">
-    <span>MYENG · Amman, Jordan · Jubail, Saudi Arabia</span>
+    <span class="foot__brand"><svg class="foot__mark" aria-hidden="true"><use href="#m-mark"/></svg><b>MYENG</b><span>Amman, Jordan · Jubail, Saudi Arabia</span></span>
     <a href="mailto:founders@myeng.online">founders@myeng.online</a>
     <button class="linkbtn linkbtn--ink" type="button" data-legal="privacy">Privacy</button>
     <button class="linkbtn linkbtn--ink" type="button" data-legal="terms">Terms</button>
     <span class="foot__copy">© <span id="year">2026</span> MYENG</span>
   </div>
   <p class="wrap foot__tm">API 610 is a standard of the American Petroleum Institute. Azure is a trademark of Microsoft; Gemini of Google. MYENG is not affiliated with or endorsed by them.</p>
-  <div class="wordmark" aria-hidden="true"><span>MYENG</span></div>
+  <div class="wordmark" aria-hidden="true"><span class="wordmark__in"><svg class="wordmark__m"><use href="#m-mark-tight"/></svg>YENG</span></div>
 </footer>
 </div>
 
@@ -273,11 +269,11 @@
     <button class="pill pill--verm" type="button" id="btnAudit">Export Audit Report</button>
   </header>
   <div class="app__case mono">
-    <span><b class="tag" id="caseTag">Illustrative template</b> <span id="caseTitle">—</span> · <span id="tabHorizon">10</span>-yr horizon <span class="saved" id="savedState"></span></span>
-    <span class="app__caseactions">
-      <span class="dim">Every field is editable · autosaved locally</span>
-      <button class="linkbtn" type="button" id="btnResetTpl">Reset to template</button>
-    </span>
+    <span class="tag" id="caseTag">Illustrative</span>
+    <span id="caseTitle">—</span>
+    <span class="dot-sep" aria-hidden="true">·</span><span><span id="tabHorizon">10</span>-yr horizon</span>
+    <span class="saved" id="savedState"></span>
+    <button class="linkbtn" type="button" id="btnResetTpl">Reset</button>
   </div>
   <div class="app__body">
       <!-- TAB 1 — TBE -->
@@ -288,8 +284,8 @@
               <h3 class="ctl-h mono">Duty &amp; Economics</h3>
               <div id="dutySliders"></div>
             </div>
-            <details class="ctl-group basis" open>
-              <summary class="ctl-h mono">Project Basis &amp; Spec Limits</summary>
+            <details class="ctl-group basis adv" id="advTbe">
+              <summary class="ctl-h mono">Spec limits &amp; basis</summary>
               <div class="fields">
                 <label class="field"><span>Fluid density ρ</span><input type="number" step="1" min="500" data-path="basis.rho"><em>kg/m³</em></label>
                 <label class="field"><span>Min. efficiency at duty</span><input type="number" step="0.5" min="0" data-path="basis.minEff"><em>%</em></label>
@@ -315,6 +311,13 @@
                 <div class="ebar" aria-hidden="true"><span class="ebar__capex" id="ebCapex"></span><span class="ebar__energy" id="ebEnergy"></span><span class="ebar__maint" id="ebMaint"></span></div>
                 <div class="ebar__leg mono"><span><i class="lg lg--capex"></i>CapEx <b id="ebCapexP">—</b></span><span><i class="lg lg--energy"></i>Electricity <b id="ebEnergyP">—</b></span><span><i class="lg lg--maint"></i>Maintenance <b id="ebMaintP">—</b></span></div>
               </div>
+            </div>
+            <div class="viewbar">
+              <div class="viewseg" role="group" aria-label="Matrix view">
+                <button type="button" data-view="exec" aria-pressed="true">Executive view</button>
+                <button type="button" data-view="full" aria-pressed="false">Full datasheet <span class="mono" id="fullCount"></span></button>
+              </div>
+              <span class="viewbar__hint mono" id="viewHint">7 decisive rows · switch to edit every parameter</span>
             </div>
             <div class="matrix-wrap" tabindex="0" aria-label="Technical bid evaluation matrix (scrolls horizontally on small screens)">
               <table class="matrix" id="matrix"></table>
@@ -348,50 +351,55 @@
       <!-- TAB 2 — HYDRAULICS -->
       <div class="tabpanel" role="tabpanel" id="panel-hyd" aria-labelledby="tab-hyd" hidden>
         <div class="hyd">
-          <aside class="controls controls--3">
+          <aside class="controls controls--hyd">
             <div class="ctl-group">
-            <h3 class="ctl-h mono">Discharge System</h3>
-            <div class="fields">
-              <label class="field"><span>Pipe ID</span><input type="number" step="0.1" min="10" data-path="hyd.D"><em>mm</em></label>
-              <label class="field"><span>Equivalent length</span><input type="number" step="1" min="1" data-path="hyd.L"><em>m</em></label>
-              <label class="field"><span>Absolute roughness ε</span><input type="number" step="0.005" min="0" data-path="hyd.eps"><em>mm</em></label>
-              <label class="field"><span>Static head</span><input type="number" step="0.5" data-path="hyd.zStatic" data-allow-neg><em>m</em></label>
-              <label class="field"><span>Minor losses ΣK</span><input type="number" step="0.5" min="0" data-path="hyd.K"><em>—</em></label>
-              <label class="field"><span>Dynamic viscosity μ</span><input type="number" step="0.1" min="0.01" data-path="hyd.mu"><em>cP</em></label>
-              <label class="field"><span>Fluid density ρ</span><input type="number" step="1" min="500" data-path="basis.rho"><em>kg/m³</em></label>
+              <h3 class="ctl-h mono">Operating case</h3>
+              <label class="field field--wide field--vendor"><span>Bidder</span><select id="hydVendor"></select></label>
+              <div id="vfdSlider" class="vfd"></div>
+              <div class="fields">
+                <label class="field"><span>Pipe ID</span><input type="number" step="0.1" min="10" data-path="hyd.D"><em>mm</em></label>
+                <label class="field"><span>Static head</span><input type="number" step="0.5" data-path="hyd.zStatic" data-allow-neg><em>m</em></label>
+              </div>
             </div>
-            </div>
-            <div class="ctl-group">
-            <h3 class="ctl-h mono">Suction / NPSH</h3>
-            <div class="fields">
-              <label class="field"><span>Suction vessel pressure</span><input type="number" step="0.1" min="1" data-path="hyd.Psurf"><em>kPa abs</em></label>
-              <label class="field"><span>Vapour pressure</span><input type="number" step="0.01" min="0" data-path="hyd.Pvap"><em>kPa abs</em></label>
-              <label class="field"><span>Liquid level above impeller eye</span><input type="number" step="0.1" data-path="hyd.zs" data-allow-neg><em>m</em></label>
-              <label class="field"><span>Suction pipe ID</span><input type="number" step="0.1" min="10" data-path="hyd.Ds"><em>mm</em></label>
-              <label class="field"><span>Suction length</span><input type="number" step="0.5" min="0" data-path="hyd.Ls"><em>m</em></label>
-              <label class="field"><span>Suction ΣK</span><input type="number" step="0.1" min="0" data-path="hyd.Ks"><em>—</em></label>
-            </div>
-            </div>
-            <div class="ctl-group">
-            <h3 class="ctl-h mono">Pump</h3>
-            <div class="fields">
-              <label class="field field--wide field--vendor"><span>Pump curve from bid</span><select id="hydVendor"></select></label>
-              <label class="field"><span>Shutoff / rated head</span><input type="number" step="0.01" min="1.02" data-path="hyd.shutoff"><em>×</em></label>
-              <label class="field"><span>VFD efficiency</span><input type="number" step="0.5" min="50" max="100" data-path="hyd.vfdEff"><em>%</em></label>
-            </div>
-            </div>
+            <details class="ctl-group adv" id="advHyd">
+              <summary class="ctl-h mono">Advanced pipe &amp; fluid basis</summary>
+              <p class="adv__sub mono">Discharge line</p>
+              <div class="fields">
+                <label class="field"><span>Equivalent length</span><input type="number" step="1" min="1" data-path="hyd.L"><em>m</em></label>
+                <label class="field"><span>Absolute roughness ε</span><input type="number" step="0.005" min="0" data-path="hyd.eps"><em>mm</em></label>
+                <label class="field"><span>Minor losses ΣK</span><input type="number" step="0.5" min="0" data-path="hyd.K"><em>—</em></label>
+              </div>
+              <p class="adv__sub mono">Fluid</p>
+              <div class="fields">
+                <label class="field"><span>Density ρ</span><input type="number" step="1" min="500" data-path="basis.rho"><em>kg/m³</em></label>
+                <label class="field"><span>Viscosity μ</span><input type="number" step="0.1" min="0.01" data-path="hyd.mu"><em>cP</em></label>
+                <label class="field"><span>Vapour pressure</span><input type="number" step="0.01" min="0" data-path="hyd.Pvap"><em>kPa abs</em></label>
+              </div>
+              <p class="adv__sub mono">Suction</p>
+              <div class="fields">
+                <label class="field"><span>Vessel pressure</span><input type="number" step="0.1" min="1" data-path="hyd.Psurf"><em>kPa abs</em></label>
+                <label class="field"><span>Level above impeller eye</span><input type="number" step="0.1" data-path="hyd.zs" data-allow-neg><em>m</em></label>
+                <label class="field"><span>Suction pipe ID</span><input type="number" step="0.1" min="10" data-path="hyd.Ds"><em>mm</em></label>
+                <label class="field"><span>Suction length</span><input type="number" step="0.5" min="0" data-path="hyd.Ls"><em>m</em></label>
+                <label class="field"><span>Suction ΣK</span><input type="number" step="0.1" min="0" data-path="hyd.Ks"><em>—</em></label>
+              </div>
+              <p class="adv__sub mono">Pump &amp; drive</p>
+              <div class="fields">
+                <label class="field"><span>Shutoff / rated head</span><input type="number" step="0.01" min="1.02" data-path="hyd.shutoff"><em>×</em></label>
+                <label class="field"><span>VFD efficiency</span><input type="number" step="0.5" min="50" max="100" data-path="hyd.vfdEff"><em>%</em></label>
+              </div>
+            </details>
           </aside>
-
           <div class="hyd__main">
+            <div class="hyd__readouts" id="hydReadouts"></div>
             <section class="twin" id="twin" aria-label="Live equipment telemetry twin">
               <header class="twin__head mono">
                 <span><i class="tick"></i>Live equipment telemetry twin</span>
                 <span class="twin__alerts" id="twinAlerts" aria-live="polite"></span>
               </header>
               <div class="twin__stage">
-                <canvas id="twinCanvas" role="img" aria-label="Cross-section of the active pump train: suction, rotating impeller, volute, discharge, motor and VFD, animated from the current hydraulic results"></canvas>
+                <canvas id="twinCanvas" role="img" aria-label="Cross-section of the active pump train"></canvas>
               </div>
-              <dl class="twin__tags" id="twinTags"></dl>
             </section>
             <div class="chart-card">
               <div class="chart-card__head mono">
@@ -402,10 +410,7 @@
                 <svg id="hqChart" class="chart" viewBox="0 0 760 440" role="img" aria-label="Interactive pump head-capacity and system resistance chart"></svg>
                 <div class="chart-tip mono" id="chartTip" hidden></div>
               </div>
-              <div id="vfdSlider" class="vfd"></div>
             </div>
-            <div class="hyd__readouts" id="hydReadouts"></div>
-            <div class="checks" id="hydChecks"></div>
           </div>
         </div>
       </div>
@@ -446,9 +451,9 @@
               <div class="fields">
                 <label class="field field--wide"><span>API surface</span>
                   <select id="azMode">
-                    <option value="foundry">Azure AI Foundry · model inference (/models/chat/completions)</option>
-                    <option value="aoai">Azure OpenAI · deployment (/openai/deployments/…)</option>
-                    <option value="v1">Azure OpenAI · v1 API (/openai/v1/chat/completions)</option>
+                    <option value="foundry">Azure AI Foundry · /models</option>
+                    <option value="aoai">Azure OpenAI · deployment</option>
+                    <option value="v1">Azure OpenAI · v1 API</option>
                   </select></label>
                 <label class="field field--wide"><span>Endpoint URL</span><input type="url" id="azEndpoint" placeholder="https://your-resource.services.ai.azure.com" autocomplete="off"></label>
                 <label class="field field--wide"><span>Deployment / model name</span><input type="text" id="azDeployment" placeholder="gpt-4o" autocomplete="off"></label>
