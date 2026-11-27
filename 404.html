@@ -342,7 +342,7 @@
                 <button class="btn btn--ghost" type="button" id="btnAward">Award Recommendation Report</button>
                 <button class="btn btn--ghost" type="button" id="btnRfi">Supplier RFI Email Draft</button>
                 <button class="btn btn--paper" type="button" id="btnXlsx">Export Excel (.xlsx)</button>
-                <button class="linkbtn deliverables__csv" type="button" id="btnCsv">CSV</button>
+                <button class="btn btn--ghost deliverables__csv" type="button" id="btnCsv">CSV</button>
               </div>
             </div>
             <details class="formulas">
@@ -513,16 +513,16 @@
             </div>
             <div class="parser__run">
               <button class="pill pill--glass pill--cta" type="button" id="btnParse">Parse datasheet <span class="pill__badge" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
-              <button class="linkbtn" type="button" id="btnForgetKeys">Forget keys</button>
+              <button class="linkbtn" type="button" id="btnForgetKeys" hidden>Forget keys</button>
             </div>
             <p class="status mono" id="parseStatus" role="status" aria-live="polite">Ready.</p>
             <details class="info">
-              <summary>Privacy &amp; API details</summary>
+              <summary id="infoSum">What the local parser reads</summary>
               <ul>
-                <li>Text is processed in this tab. With the local parser nothing leaves your browser. With a cloud provider, the text is sent directly from your browser to the endpoint you configure, under your account and that provider's data terms.</li>
-                <li>Deterministic regular-expression parser. Recognises common quotation phrasing for price, BEP efficiency and flow, NPSH3/NPSHr, MAWP, material class, motor rating and efficiency, maintenance allowance and lead time. No key required.</li>
-                <li>Keys live in JavaScript memory for this tab only — never written to storage, cookies or any MYENG server. Reloading the page clears them.</li>
-                <li>Unpaid Gemini API tiers may use submitted content to improve Google products. Use a paid key or the local parser for confidential pricing.</li>
+                <li data-for="local">Recognises common quotation phrasing for price, BEP efficiency and flow, NPSH3/NPSHr, MAWP, material class, motor rating and efficiency, maintenance allowance and lead time.</li>
+                <li data-for="azure gemini" hidden>The quotation text is sent directly from your browser to the endpoint you configure, under your account and that provider's data terms.</li>
+                <li data-for="azure gemini" hidden>Keys live in JavaScript memory for this tab only — never written to storage, cookies or any MYENG server. Reloading the page clears them.</li>
+                <li data-for="gemini" hidden>Unpaid Gemini API tiers may use submitted content to improve Google products. Use a paid key or the local parser for confidential pricing.</li>
               </ul>
             </details>
           </div>

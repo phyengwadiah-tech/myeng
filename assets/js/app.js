@@ -254,6 +254,11 @@
     if (v && m) return v + ' (' + m + ')';
     return v || m || ('Bid ' + 'ABC'[i]);
   }
+  function bidNameH(i) {
+    var b = state.bids[i], v = (b.vendor || '').trim(), m = (b.model || '').trim();
+    if (v && m) return esc(v) + '<span class="nw">&nbsp;(' + esc(m) + ')</span>';
+    return esc(bidName(i));
+  }
   function today() { return new Date().toISOString().slice(0, 10); }
   function dutyLabel() { return num(state.duty.Q) + ' m³/h @ ' + num(state.duty.H) + ' m'; }
 
@@ -316,10 +321,10 @@
     wrap.className = 'rs';
     wrap.innerHTML =
       '<div class="rs__track">' +
-      '<span class="rs__fill" aria-hidden="true"></span><span class="rs__thumb" aria-hidden="true"></span>' +
-      '<label class="rs__label" for="' + id + '">' + cfg.label + '</label>' +
-      '<input type="range" id="' + id + '" min="' + cfg.min + '" max="' + cfg.max + '" step="' + cfg.step + '">' +
-      '<span class="rs__val"><input type="text" inputmode="decimal" class="rs__num" aria-label="' + cfg.label.replace(/<[^>]+>/g, '') + ' value" spellcheck="false"><span class="rs__unit">' + cfg.unit + '</span></span>' +
+      '<div class="rs__head"><label class="rs__label" for="' + id + '">' + cfg.label + '</label>' +
+      '<span class="rs__val"><input type="text" inputmode="decimal" class="rs__num" aria-label="' + cfg.label.replace(/<[^>]+>/g, '') + ' value" spellcheck="false"><span class="rs__unit">' + cfg.unit + '</span></span></div>' +
+      '<div class="rs__rail"><span class="rs__fill" aria-hidden="true"></span><span class="rs__thumb" aria-hidden="true"></span>' +
+      '<input type="range" id="' + id + '" min="' + cfg.min + '" max="' + cfg.max + '" step="' + cfg.step + '"></div>' +
       '</div>';
     host.appendChild(wrap);
     var input = $('input[type=range]', wrap), numEl = $('.rs__num', wrap), track = $('.rs__track', wrap);
@@ -385,10 +390,20 @@
   /* ================================================================
      Generic bound inputs  [data-path]
      ================================================================ */
+  function moneyIn(v) { return isFinite(v) ? '$' + Math.round(v).toLocaleString('en-US') : ''; }
+  // currency cells show "$186,000" at rest and the raw number while being edited
+  doc.addEventListener('focusin', function (e) {
+    var el = e.target;
+    if (el.hasAttribute && el.hasAttribute('data-money')) { var v = getPath(state, el.getAttribute('data-path')); el.value = isFinite(v) ? String(v) : el.value; try { el.select(); } catch (x) { /* noop */ } }
+  });
+  doc.addEventListener('focusout', function (e) {
+    var el = e.target;
+    if (el.hasAttribute && el.hasAttribute('data-money') && !el.classList.contains('is-invalid')) el.value = moneyIn(getPath(state, el.getAttribute('data-path')));
+  });
   function syncInputs() {
     $$('[data-path]').forEach(function (el) {
       var v = getPath(state, el.getAttribute('data-path'));
-      if (doc.activeElement !== el) el.value = v;
+      if (doc.activeElement !== el) el.value = el.hasAttribute('data-money') ? moneyIn(v) : v;
       el.classList.remove('is-invalid');
     });
     $('#hydVendor').value = String(state.hyd.vendor);
@@ -400,13 +415,15 @@
     if (el.getAttribute('data-type') === 'text' || el.tagName === 'SELECT') {
       setPath(state, path, el.value);
     } else {
-      var v = parseFloat(el.value);
-      var bad = !isFinite(v) || (el.min !== '' && v < parseFloat(el.min)) || (el.max !== '' && v > parseFloat(el.max));
+      var isM = el.hasAttribute('data-money');
+      var v = parseFloat(isM ? String(el.value).replace(/[$,\s]/g, '') : el.value);
+      var lo = isM ? el.getAttribute('data-min') : el.min;
+      var bad = !isFinite(v) || (lo !== '' && lo != null && v < parseFloat(lo)) || (!isM && el.max !== '' && v > parseFloat(el.max));
       el.classList.toggle('is-invalid', bad);
       if (bad) return;
       setPath(state, path, v);
       // keep duplicated fields (e.g. density appears twice) in sync
-      $$('[data-path="' + path + '"]').forEach(function (o) { if (o !== el) o.value = v; });
+      $$('[data-path="' + path + '"]').forEach(function (o) { if (o !== el) o.value = o.hasAttribute('data-money') ? moneyIn(v) : v; });
     }
     schedule();
   }
@@ -420,12 +437,13 @@
     matrixView = v;
     $('#matrix').classList.toggle('is-exec', v === 'exec');
     $$('.viewseg [data-view]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-view') === v ? 'true' : 'false'); });
-    $('#viewHint').textContent = v === 'exec' ? '7 decisive rows · switch to edit every parameter' : 'Every input and calculated value · all fields editable';
+    var nx = $$('#matrix tbody tr.x').length, nf = $$('#matrix tbody tr:not(.grp)').length;
+    $('#viewHint').textContent = v === 'exec' ? nx + ' decisive rows · switch to Full datasheet to edit all ' + nf : 'Every input and calculated value · all ' + nf + ' rows editable';
   }
   var INPUT_ROWS = [
     { g: 'Commercial' },
-    { k: 'capex', label: 'CapEx (pump + motor + baseplate)', unit: 'USD', step: 500, min: 0 },
-    { k: 'maint', label: 'Annual maintenance', unit: 'USD/yr', step: 100, min: 0 },
+    { k: 'capex', label: 'CapEx (pump + motor + baseplate)', unit: 'USD', step: 500, min: 0, money: true },
+    { k: 'maint', label: 'Annual maintenance', unit: 'USD/yr', step: 100, min: 0, money: true },
     { k: 'lead', label: 'Lead time', unit: 'weeks', step: 1, min: 0 },
     { g: 'Hydraulic performance' },
     { k: 'etaBep', label: 'BEP efficiency η', unit: '%', step: 0.1, min: 1, max: 99.9 },
@@ -475,6 +493,8 @@
         if (r.select) {
           h += '<td data-col="' + i + '"><select data-type="text" data-path="' + path + '"' + aria + '>' +
             E.MATERIAL_CLASSES.map(function (m) { return '<option>' + m + '</option>'; }).join('') + '</select></td>';
+        } else if (r.money) {
+          h += '<td data-col="' + i + '"><input type="text" class="money" inputmode="decimal" data-money="1" data-min="' + r.min + '" data-path="' + path + '"' + aria + '></td>';
         } else {
           h += '<td data-col="' + i + '"><input type="number" inputmode="decimal" step="' + r.step + '" min="' + r.min + '"' +
             (r.max != null ? ' max="' + r.max + '"' : '') + ' data-path="' + path + '"' + aria + '></td>';
@@ -534,9 +554,9 @@
     var rec = result.recommended, r = result.bids[rec], ch = result.cheapest, n = state.duty.horizon;
     var co2d = result.bids[ch].co2 - r.co2;
     var html = '' +
-      kpi(result.anyCompliant ? 'Recommended award' : 'Lowest TCO · not compliant', esc(bidName(rec)), result.anyCompliant ? 'Lowest TCO among compliant bids' : 'No bid is fully compliant — see deviations', false, true) +
+      kpi(result.anyCompliant ? 'Recommended award' : 'Lowest TCO · not compliant', bidNameH(rec), result.anyCompliant ? 'Lowest TCO among compliant bids' : 'No bid is fully compliant — see deviations', false, true) +
       kpi(n + '-yr TCO', money(r.tco), 'CapEx ' + moneyShort(state.bids[rec].capex) + ' · energy ' + moneyShort(r.energyH), true) +
-      kpi('vs lowest-CapEx bid', savesText(r), rec === ch ? 'Lowest-CapEx bid is also lowest TCO' : 'ΔTCO ' + deltaTco(r) + ' vs ' + esc(bidName(ch)) + ' over ' + n + ' yrs') +
+      kpi('vs lowest-CapEx bid', savesText(r), rec === ch ? 'Lowest-CapEx bid is also lowest TCO' : 'ΔTCO ' + deltaTco(r) + ' vs ' + bidNameH(ch) + ' over ' + n + ' yrs') +
       kpi('CO₂ vs lowest CapEx', (Math.abs(co2d) < 0.05 ? '' : co2d > 0 ? MINUS : '+') + num(Math.abs(co2d), 1) + ' t/yr', 'at ' + state.basis.ef.toFixed(2) + ' kg CO₂/kWh');
     rollRender($('#tbeKpis'), html);
     $('#tbeNpsha').textContent = num(result.npsha.npsha, 2) + ' m';
@@ -561,7 +581,7 @@
       '<i class="seg-capex"></i>CapEx<i class="seg-energy"></i>Energy<i class="seg-maint"></i>Maintenance</span></div>';
     result.bids.forEach(function (r, i) {
       var b = state.bids[i], w = function (v) { return (v / max * 100).toFixed(2) + '%'; };
-      h += '<div class="bar' + (i === result.recommended ? ' bar--rec' : '') + '"><span class="bar__name">' + esc(bidName(i)) + '</span>' +
+      h += '<div class="bar' + (i === result.recommended ? ' bar--rec' : '') + '"><span class="bar__name">' + bidNameH(i) + '</span>' +
         '<span class="bar__track"><span class="seg-capex" style="width:' + w(b.capex) + '"></span><span class="seg-energy" style="width:' + w(r.energyH) + '"></span><span class="seg-maint" style="width:' + w(r.maintH) + '"></span></span>' +
         '<span class="bar__val">' + money(r.tco) + '</span></div>';
     });
@@ -696,7 +716,7 @@
       out.push('<line x1="' + ox + '" x2="' + ox + '" y1="' + oy + '" y2="' + y0 + '" stroke="' + T.ink + '" stroke-opacity=".35" stroke-dasharray="2 3"/>');
       out.push('<line x1="' + x0 + '" x2="' + ox + '" y1="' + oy + '" y2="' + oy + '" stroke="' + T.ink + '" stroke-opacity=".35" stroke-dasharray="2 3"/>');
       out.push('<circle cx="' + ox + '" cy="' + oy + '" r="' + (o.mini ? 5 : 6) + '" fill="' + T.bg + '" stroke="' + T.ink + '" stroke-width="1.6"/><circle cx="' + ox + '" cy="' + oy + '" r="2" fill="#E04619"/>');
-      var lab = 'OP ' + num(c.op.Q) + ' m³/h · ' + num(c.op.H, 1) + ' m';
+      var lop = (this.tgt && this.tgt.op) || c.op, lab = 'OP ' + num(lop.Q) + ' m³/h · ' + num(lop.H, 1) + ' m';
       var right = ox < (x0 + x1) / 2;
       var fs = o.mini ? 10.5 : 11.5, tw = lab.length * fs * 0.6 + 18, th = fs + 12;
       var lx = right ? ox + 12 : ox - 12 - tw, ly = oy + (o.mini ? -14 - th : 14);
@@ -780,7 +800,7 @@
     if (st.noFlow) {
       rollRender($('#hydReadouts'),
         card('Operating point', 'No delivery', 'Shutoff ' + num(st.s * st.s * st.H0, 1) + ' m is below the ' + num(state.hyd.zStatic, 1) + ' m static head', 'bad', 'Increase speed') +
-        card('VFD power & savings', '—', '') + card('NPSH safety margin', '—', '') + card('Pipe velocity & erosion', '—', ''));
+        card('VFD power & savings', '—', '') + card('NPSH safety margin', '—', '') + card('Pipe velocity', '—', ''));
       return;
     }
     var m = st.npshMargin, nState = m >= 1 ? 'SAFE' : m >= 0 ? 'LOW MARGIN' : 'CAVITATION RISK';
@@ -792,7 +812,7 @@
         (sv >= 0 ? 'Saves ' + num(sv, 1) + ' kW vs throttling · ' + money(st.saveUsd) + '/yr · ' + num(st.saveCo2, 1) + ' t CO₂' : 'VFD losses exceed throttling loss here')) +
       card('NPSH safety margin', (m >= 0 ? '+' : '') + num(m, 2) + ' m',
         'NPSHa ' + num(st.npsha, 2) + ' m vs NPSHr ' + num(st.npshr, 2) + ' m · min 1.0 m', m < 1 ? 'bad' : 'ok', nState) +
-      card('Pipe velocity & erosion', num(st.vDis, 2) + ' m/s',
+      card('Pipe velocity', num(st.vDis, 2) + ' m/s',
         'Discharge · suction ' + num(st.vSuc, 2) + ' m/s · limit 3.5 m/s', vBad ? 'bad' : 'ok', vBad ? 'EROSION RISK' : 'WITHIN LIMIT'));
   }
   // Executive readout card: one value, one line of context, optional state badge.
@@ -814,12 +834,14 @@
     var st = storyState, res = E.evaluate(st), hs = storyStudy;
     var rec = res.recommended, max = Math.max.apply(null, res.bids.map(function (r) { return r.tco; }));
     var raw = ['Efficiency at BEP: 81.2 %', 'NPSH3 at rated flow: 4.6 m', 'MAWP: 51 bar g @ 38 °C', 'Material class: S-6', 'Driver: 132 kW, IE3', 'Total price: USD 171,500', 'Delivery: 20 weeks ARO'];
-    var f0 = '<div class="sv sv--parse"><div class="sv__raw mono">' + raw.map(function (l, i) { return '<span style="--i:' + i + '">' + l + '</span>'; }).join('') + '</div>' +
+    var f0 = '<div class="sv sv--parse"><div class="sv__raw mono">' + raw.map(function (l, i) { var c = l.indexOf(': '); return '<span style="--i:' + i + '">' + l.slice(0, c + 1) + ' <b class="nw">' + l.slice(c + 2) + '</b></span>'; }).join('') + '</div>' +
       '<div class="sv__arrow" aria-hidden="true"><i></i></div>' +
-      '<table class="sv__tbl mono"><thead><tr><th>Bidder</th><th>CapEx</th><th>η BEP</th><th>NPSH3</th><th>10-yr TCO</th></tr></thead><tbody>' +
+      '<table class="sv__tbl mono"><thead><tr><th>Bidder</th><th>CapEx</th><th><span class="nt">η</span> BEP</th><th>NPSH3</th><th>10-yr TCO</th></tr></thead><tbody>' +
       res.bids.map(function (r, i) {
         var b = st.bids[i];
-        return '<tr class="' + (i === rec ? 'is-rec' : '') + '"><td>' + esc(b.vendor) + '</td><td>' + moneyShort(b.capex) + '</td><td>' + num(b.etaBep, 1) + '%</td><td>' + num(b.npshr, 1) + ' m</td><td>' + moneyShort(r.tco) + '</td></tr>';
+        var dev = r.deviations.filter(function (d) { return d.sev === 'major'; })[0];
+        var tag = !r.compliant && dev ? ' <em class="sv__dev">' + (/npsh/i.test(dev.code + ' ' + dev.text) ? 'NPSH' : esc(dev.code)) + ' dev.</em>' : '';
+        return '<tr class="' + (i === rec ? 'is-rec' : '') + '"><td>' + esc(b.vendor) + tag + '</td><td>' + moneyShort(b.capex) + '</td><td>' + num(b.etaBep, 1) + '%</td><td>' + num(b.npshr, 1) + ' m</td><td>' + moneyShort(r.tco) + '</td></tr>';
       }).join('') + '</tbody></table>' +
       '<div class="sv__bars">' + res.bids.map(function (r, i) {
         return '<div class="sv__bar' + (i === rec ? ' is-rec' : '') + '"><span>' + esc(st.bids[i].vendor) + (i === rec ? ' · recommended' : '') + '</span><i><b style="--w:' + (r.tco / max * 100).toFixed(1) + '%"></b></i></div>';
@@ -835,7 +857,7 @@
       '<span class="doc__call">Recommend <b>' + esc(rb.vendor + ' (' + rb.model + ')') + '</b> — lowest 10-yr TCO among compliant bids, ' + money(res.bids[rec].tco) + '.</span>' +
       '<span class="doc__line" style="width:86%"></span><span class="doc__line" style="width:70%"></span><span class="doc__line" style="width:78%"></span>' +
       '<span class="doc__sign"><i>Prepared</i><i>Checked</i><i>Approved</i></span></div>' +
-      '<ul class="sv__chips mono"><li>Award report</li><li>Supplier RFIs</li><li>CSV matrix</li><li>Audit trail</li></ul></div>';
+      '<ul class="sv__chips mono"><li>Award report</li><li>Supplier RFIs</li><li>Excel matrix</li><li>Audit trail</li></ul></div>';
     return [f0, f1, f2];
   }
   function renderStory() {
@@ -1011,7 +1033,7 @@
     });
     var a = (cav ? '<span class="talert talert--bad">CAVITATION ONSET · EYE ZONE</span>' : '<span class="talert">NPSH SAFE</span>') +
       (ero ? '<span class="talert talert--bad">EROSION RISK · &gt;3.5 m/s</span>' : '') +
-      '<span class="talert talert--quiet">' + esc(bidName(st.bidIndex)) + '</span>';
+      '<span class="talert talert--quiet">' + bidNameH(st.bidIndex) + '</span>';
     if (a !== lastAlert) { alerts.innerHTML = a; lastAlert = a; }
     var pill = function (id, k, v, bad) { var el = $(id); el.innerHTML = '<span class="tglass__k">' + k + '</span><b>' + v + '</b>'; el.classList.toggle('is-alert', !!bad); };
     pill('#tpFlow', 'Flow Q', num(st.op.Q) + ' m³/h');
@@ -1027,7 +1049,7 @@
     var rec = result.recommended, r = result.bids[rec], b = state.bids[rec];
     var tot = b.capex + r.energyH + r.maintH;
     var pc = function (v) { return (v / tot * 100); };
-    $('#stripName').textContent = bidName(rec);
+    $('#stripName').innerHTML = bidNameH(rec);
     rollText($('#stripMeta'), 'η ' + num(r.eta * 100, 1) + ' % · ' + num(r.Pin, 1) + ' kW · ' + num(r.kWh / 1000) + ' MWh/yr · electricity ' + num(pc(r.energyH), 0) + '% of ' + state.duty.horizon + '-yr TCO');
     // energy flow speed follows the cost of running: hours × tariff
     var intensity = Math.min(1, (state.duty.hours * state.duty.tariff) / 1500);
@@ -1390,8 +1412,8 @@
     if (hqChart && hqChart.cur) hqChart.draw();
   }
   function initStudioTheme() {
-    var t = 'obsidian';
-    try { t = window.localStorage.getItem(THEME_KEY) || 'obsidian'; } catch (e) { /* storage unavailable */ }
+    var t = 'stone';
+    try { t = window.localStorage.getItem(THEME_KEY) || 'stone'; } catch (e) { /* storage unavailable */ }
     setStudioTheme(t, false);
     $$('[data-theme-set]').forEach(function (b) { b.addEventListener('click', function () { setStudioTheme(b.getAttribute('data-theme-set'), true); }); });
   }
@@ -2076,9 +2098,17 @@
   function bindParser() {
     renderParse(null);
     var engine = function () { return ($('input[name=engine]:checked') || {}).value || 'local'; };
+    function syncEngineInfo() {
+      var e = engine();
+      $$('.engine-cfg').forEach(function (c) { c.hidden = c.getAttribute('data-engine') !== e; });
+      $$('.info li[data-for]').forEach(function (li) { li.hidden = li.getAttribute('data-for').split(' ').indexOf(e) < 0; });
+      $('#btnForgetKeys').hidden = e === 'local';
+      $('#infoSum').textContent = e === 'local' ? 'What the local parser reads' : 'Privacy & API details';
+    }
+    syncEngineInfo();
     $$('input[name=engine]').forEach(function (r) {
       r.addEventListener('change', function () {
-        $$('.engine-cfg').forEach(function (c) { c.hidden = c.getAttribute('data-engine') !== engine(); });
+        syncEngineInfo();
       });
     });
     $('#gmModel').addEventListener('change', function () { $('#gmCustomWrap').hidden = this.value !== 'custom'; });
