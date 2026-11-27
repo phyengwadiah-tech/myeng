@@ -62,40 +62,52 @@
     <div class="index-tab reveal"><b>01 /</b><span>Platform</span></div>
 
     <p class="hero__eyebrow mono">Technical Evaluation Platform · Pumps &amp; Rotating Equipment</p>
+    <div class="hero__head">
     <h1 class="hero__title" id="hero-title">
-      <span class="ln"><span>Rotating</span></span>
-      <span class="ln"><span>Equipment</span></span>
-      <span class="ln"><span>Intelligence<i>.</i></span></span>
+      <span class="ln ln--1"><span>Rotating Equipment</span></span>
+      <span class="ln ln--2"><span>Intelligence<i>.</i></span></span>
     </h1>
-
-    <div class="hero__grid">
-      <div class="hero__copy">
-        <p class="hero__lede">Technical bid evaluation, API&nbsp;610 compliance checks, and 10-year lifecycle hydraulics—built on deterministic engineering math.</p>
-        <p class="hero__meta mono">REV 04 · API 610 · ISO 5199 · MICROSOFT AZURE AI FOUNDRY</p>
-        <div class="hero__ctas">
-          <button class="btn btn--ink btn--lg" type="button" data-launch="tbe">Launch Live Studio <span aria-hidden="true">→</span></button>
-          <button class="btn btn--line btn--lg" type="button" data-load-sample>Load 3-Bid Sample</button>
-        </div>
+    <div class="hero__aside">
+      <p class="hero__lede">Technical bid evaluation, API&nbsp;610 compliance checks, and 10-year lifecycle hydraulics—built on deterministic engineering math.</p>
+      <p class="hero__meta mono">REV 04 · API 610 · ISO 5199 · AZURE AI FOUNDRY</p>
+      <div class="hero__ctas">
+        <button class="btn btn--ink btn--lg" type="button" data-launch="tbe">Launch Live Studio <span aria-hidden="true">→</span></button>
+        <button class="btn btn--line btn--lg" type="button" data-load-sample>Load 3-Bid Sample</button>
       </div>
-      <dl class="hero__spec mono">
-        <div><dt>Hydraulic power</dt><dd>P<sub>h</sub> = ρgQH / 3.6×10⁶</dd></div>
-        <div><dt>Pipe friction</dt><dd>Darcy–Weisbach · Swamee–Jain</dd></div>
-        <div><dt>Speed trim</dt><dd>Affinity laws Q∝N · H∝N² · P∝N³</dd></div>
-        <div><dt>Execution</dt><dd>In your browser · no server round-trip</dd></div>
-      </dl>
+    </div>
     </div>
 
-    <div class="showcase reveal">
-      <article class="panel panel--geom">
+    <div class="showcase reveal" id="showcase">
+      <canvas class="flowfield" id="flowfield" aria-hidden="true"></canvas>
+      <article class="panel panel--geom tilt">
         <header class="panel__head mono"><span class="tick"></span>01 / Pump Component Geometry</header>
         <div class="geom">
-          <svg id="impeller" viewBox="0 0 640 430" role="img" aria-label="Technical drawing of a closed centrifugal impeller: front view with six backward-curved vanes and a meridional half-section with dimension callouts."></svg>
+          <img src="/assets/impeller-hero.jpg" width="1600" height="893" alt="Machined closed centrifugal impeller in brushed stainless steel, photographed on black" decoding="async">
+          <svg class="geom__cad" viewBox="0 0 1600 893" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <g fill="none" stroke="#8E9196" stroke-width="1.4" vector-effect="non-scaling-stroke">
+              <line x1="800" y1="70" x2="800" y2="800" stroke-dasharray="26 6 4 6"/>
+              <line x1="348" y1="96" x2="348" y2="360"/><line x1="1252" y1="96" x2="1252" y2="360"/>
+              <line x1="348" y1="112" x2="1252" y2="112"/>
+              <path d="M348 112l22-7v14zM1252 112l-22-7v14z" fill="#8E9196" stroke="none"/>
+              <path d="M1072 222 L1250 168 H1430"/>
+              <circle cx="1072" cy="222" r="5" fill="#111214"/>
+            </g>
+            <g fill="none" stroke="#E04619" stroke-width="1.4" vector-effect="non-scaling-stroke">
+              <path d="M380 400 L250 300 H90"/><circle cx="380" cy="400" r="5" fill="#111214"/>
+            </g>
+            <g font-family="JetBrains Mono, monospace" font-size="26" fill="#C9CBCF" letter-spacing="1">
+              <text x="800" y="94" text-anchor="middle">Ø 280 mm</text>
+              <text x="1262" y="156">Ø 170 EYE RING</text>
+              <text x="92" y="288" fill="#E04619">VANE TIP · β₂ 24°</text>
+              <text x="814" y="836" fill="#8E9196" font-size="22">℄ ROTATION AXIS</text>
+            </g>
+          </svg>
         </div>
         <footer class="panel__foot mono">
-          <span>Closed impeller · 6 vanes · β₂ 25°</span><span>Ø365 · b₂ 28 · mm</span>
+          <span>Closed impeller · 6 vanes · CF8M</span><span>Ø280 · mm</span>
         </footer>
       </article>
-      <article class="panel panel--live">
+      <article class="panel panel--live tilt">
         <header class="panel__head mono"><span class="tick"></span>02 / Live TBE &amp; Hydraulic Curve</header>
         <p class="panel__case mono" id="heroCase">Sample case study · 420 m³/h @ 68 m</p>
         <div class="readouts">
@@ -111,6 +123,12 @@
         </footer>
       </article>
     </div>
+    <dl class="hero__spec mono" data-stagger>
+      <div><dt>Hydraulic power</dt><dd>P<sub>h</sub> = ρgQH / 3.6×10⁶</dd></div>
+      <div><dt>Pipe friction</dt><dd>Darcy–Weisbach · Swamee–Jain</dd></div>
+      <div><dt>Speed trim</dt><dd>Affinity laws Q∝N · H∝N² · P∝N³</dd></div>
+      <div><dt>Execution</dt><dd>In your browser · no server round-trip</dd></div>
+    </dl>
   </div>
 </section>
 
@@ -338,7 +356,7 @@
       <p class="sec-lede reveal">A language model reads quotations. It never computes a head, a power or a cost. Every engineering number comes from closed-form equations you can inspect in the page source.</p>
     </div>
 
-    <div class="schematic reveal">
+    <div class="schematic" data-stagger>
       <div class="layer">
         <span class="layer__n mono">L1</span>
         <h3>Deterministic Physics Layer</h3>
@@ -390,8 +408,8 @@
       <p class="sec-lede reveal">The Sandbox is the full calculation engine. Paid plans add managed extraction, saved workspaces and team workflow. Pro and Enterprise are currently onboarded directly by the founders.</p>
     </div>
 
-    <div class="plans">
-      <article class="plan reveal">
+    <div class="plans" data-stagger>
+      <article class="plan tilt tilt--light">
         <header><h3>Sandbox</h3><p class="price"><span class="mono">$0</span></p></header>
         <ul>
           <li>Full Hydraulics &amp; NPSH Studio</li>
@@ -401,7 +419,7 @@
         </ul>
         <button class="btn btn--line btn--block" type="button" data-launch="tbe">Open Sandbox →</button>
       </article>
-      <article class="plan plan--feature reveal">
+      <article class="plan plan--feature tilt tilt--light">
         <span class="plan__flag mono">Most engineers</span>
         <header><h3>Pro Engineer</h3><p class="price"><span class="mono">$79</span> <small>/ month</small></p></header>
         <ul>
@@ -412,7 +430,7 @@
         </ul>
         <a class="btn btn--ink btn--block" href="mailto:founders@myeng.online?subject=MYENG%20Pro%20Engineer%20%E2%80%94%20access%20request">Request Pro access →</a>
       </article>
-      <article class="plan reveal">
+      <article class="plan tilt tilt--light">
         <header><h3>Enterprise / EPC</h3><p class="price"><span class="mono">$349</span> <small>/ month</small></p></header>
         <ul>
           <li>Multi-engineer review &amp; approval workflow</li>
@@ -451,7 +469,7 @@
 <footer class="foot" id="contact">
   <div class="frame">
     <div class="index-tab reveal"><b>05 /</b><span>Company</span></div>
-    <div class="foot__grid">
+    <div class="foot__grid" data-stagger>
       <div class="foot__brand">
         <a class="brand" href="#top" aria-label="MYENG — back to top">
           <svg class="brand__mark" aria-hidden="true"><use href="#m-mark"/></svg>

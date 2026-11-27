@@ -26,9 +26,9 @@
       shutoff: 1.18, vfdEff: 97, speed: 92, vendor: 'rec'
     },
     bids: [
-      { vendor: 'Sulzer', model: 'CPT-300', capex: 186000, etaBep: 82.5, qBep: 440, etaMotor: 96.0, material: 'S-6', mawp: 40, npshr: 4.2, motorKw: 132, maint: 6800, lead: 18 },
-      { vendor: 'Flowserve', model: 'Mark 3', capex: 142000, etaBep: 76.0, qBep: 470, etaMotor: 95.4, material: 'S-1', mawp: 20, npshr: 3.6, motorKw: 110, maint: 5200, lead: 12 },
-      { vendor: 'KSB', model: 'MegaCPK', capex: 158000, etaBep: 80.0, qBep: 400, etaMotor: 95.8, material: 'S-6', mawp: 25, npshr: 5.8, motorKw: 110, maint: 6100, lead: 22 }
+      { vendor: 'Bidder A', model: 'OH2-300', capex: 186000, etaBep: 82.5, qBep: 440, etaMotor: 96.0, material: 'S-6', mawp: 40, npshr: 4.2, motorKw: 132, maint: 6800, lead: 18 },
+      { vendor: 'Bidder B', model: 'OH2-260', capex: 142000, etaBep: 76.0, qBep: 470, etaMotor: 95.4, material: 'S-1', mawp: 20, npshr: 3.6, motorKw: 110, maint: 5200, lead: 12 },
+      { vendor: 'Bidder C', model: 'OH2-220', capex: 158000, etaBep: 80.0, qBep: 400, etaMotor: 95.8, material: 'S-6', mawp: 25, npshr: 5.8, motorKw: 110, maint: 6100, lead: 22 }
     ]
   };
   var ROI_DEFAULT = { perYear: 12, kw: 90, delta: 3, baseEff: 72, hours: 8000, tariff: 0.11, ef: 0.55, years: 10 };
@@ -70,7 +70,11 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
-  function bidName(i) { var b = state.bids[i]; return (b.vendor + ' ' + b.model).trim() || ('Bid ' + 'ABC'[i]); }
+  function bidName(i) {
+    var b = state.bids[i], v = (b.vendor || '').trim(), m = (b.model || '').trim();
+    if (v && m) return v + ' (' + m + ')';
+    return v || m || ('Bid ' + 'ABC'[i]);
+  }
   function today() { return new Date().toISOString().slice(0, 10); }
   function dutyLabel() { return num(state.duty.Q) + ' m³/h @ ' + num(state.duty.H) + ' m'; }
 
@@ -130,22 +134,29 @@
     wrap.innerHTML =
       '<div class="slider__top"><label class="slider__lab" for="' + id + '">' + cfg.label + '</label>' +
       '<span class="slider__val"><span data-v></span><small>' + cfg.unit + '</small></span></div>' +
+      '<div class="slider__rail"><div class="slider__channel"><span class="slider__fill"></span></div>' +
       '<input type="range" id="' + id + '" min="' + cfg.min + '" max="' + cfg.max + '" step="' + cfg.step + '">' +
+      '<span class="slider__tip" aria-hidden="true"></span></div>' +
       '<div class="slider__scale"><span>' + cfg.fmt(cfg.min) + '</span><span>' + cfg.fmt(cfg.max) + '</span></div>';
     host.appendChild(wrap);
-    var input = $('input', wrap), out = $('[data-v]', wrap);
-    var s = { cfg: cfg, input: input, out: out };
+    var input = $('input', wrap), out = $('[data-v]', wrap), rail = $('.slider__rail', wrap), tip = $('.slider__tip', wrap);
+    var s = { cfg: cfg, input: input, out: out, last: null };
     s.sync = function () {
       var v = cfg.get();
-      input.value = v;
-      out.textContent = cfg.fmt(v);
-      input.style.setProperty('--p', ((v - cfg.min) / (cfg.max - cfg.min) * 100) + '%');
+      if (doc.activeElement !== input || String(v) !== input.value) input.value = v;
+      var txt = cfg.fmt(v);
+      if (txt !== s.last) { out.textContent = txt; tip.textContent = txt + ' ' + cfg.unit.replace(/<[^>]+>/g, ''); s.last = txt; }
+      var f = (v - cfg.min) / (cfg.max - cfg.min);
+      rail.style.setProperty('--p', (f * 100).toFixed(2) + '%');
+      rail.style.setProperty('--pf', f.toFixed(4));
     };
     input.addEventListener('input', function () {
       cfg.set(parseFloat(input.value));
       s.sync();
       cfg.after();
     });
+    input.addEventListener('pointerdown', function () { rail.classList.add('is-drag'); });
+    window.addEventListener('pointerup', function () { rail.classList.remove('is-drag'); });
     sliders.push(s);
     s.sync();
     return s;
@@ -300,7 +311,7 @@
       OUT_ROWS.forEach(function (row) {
         if (!row.k) return;
         var c = $('#matrix [data-col="' + i + '"][data-out="' + row.k + '"]');
-        if (c) c.innerHTML = row.f(r);
+        if (c) rollText(c, row.f(r));
       });
       var pill = $('[data-pill="' + i + '"]');
       if (i === rec && result.anyCompliant) { pill.className = 'pill pill--rec'; pill.textContent = 'Recommended'; }
@@ -322,13 +333,15 @@
       kpi(n + '-yr TCO', money(r.tco), 'CapEx ' + moneyShort(state.bids[rec].capex) + ' · energy ' + moneyShort(r.energyH), true) +
       kpi('Net vs lowest CapEx', rec === ch ? '$0' : money(r.savingsVsCheapest, true), rec === ch ? 'Lowest-CapEx bid is also lowest TCO' : 'vs ' + esc(bidName(ch)) + ' over ' + n + ' yrs') +
       kpi('CO₂ vs lowest CapEx', (Math.abs(co2d) < 0.05 ? '' : co2d > 0 ? MINUS : '+') + num(Math.abs(co2d), 1) + ' t/yr', 'at ' + state.basis.ef.toFixed(2) + ' kg CO₂/kWh');
-    $('#tbeKpis').innerHTML = html;
+    rollRender($('#tbeKpis'), html);
     $('#tbeNpsha').textContent = num(result.npsha.npsha, 2) + ' m';
     $('#tabHorizon').textContent = n;
   }
   function kpi(k, v, s, verm, sans) {
+    var key = String(k).replace(/<[^>]+>/g, '');
+    var vv = sans ? v : (v.indexOf(' <small>') > 0 ? '<span data-roll="' + key + '">' + v.replace(' <small>', '</span> <small>') : '<span data-roll="' + key + '">' + v + '</span>');
     return '<div class="kpi"><span class="kpi__k">' + k + '</span><span class="kpi__v' + (verm ? ' kpi__v--verm' : '') + '"' +
-      (sans ? ' style="font-family:var(--sans);font-size:19px;letter-spacing:-0.02em"' : '') + '>' + v + '</span>' +
+      (sans ? ' style="font-family:var(--sans);font-size:19px;letter-spacing:-0.02em"' : '') + '>' + vv + '</span>' +
       (s ? '<span class="kpi__s">' + s + '</span>' : '') + '</div>';
   }
 
@@ -532,7 +545,7 @@
       return;
     }
     var fl = st.op.Q, sv = st.saveKw;
-    $('#hydReadouts').innerHTML =
+    rollRender($('#hydReadouts'),
       kpi('Operating flow', num(fl, 0) + ' <small>m³/h</small>', num(fl / d.Q * 100, 0) + '% of rated · ' + state.hyd.speed + '% speed') +
       kpi('Operating head', num(st.op.H, 1) + ' <small>m</small>', 'static ' + num(state.hyd.zStatic, 1) + ' + friction ' + num(st.hf, 1) + ' m') +
       kpi('Pump <span class="nt">η</span> at OP', num(st.etaOp * 100, 1) + ' <small>%</small>', 'BEP at ' + num(st.qBepS, 0) + ' m³/h (scaled)') +
@@ -540,7 +553,7 @@
       kpi('Input power · throttled', num(st.Pthr, 1) + ' <small>kW</small>', 'same flow at 100% speed, ' + num(st.Hthr, 1) + ' m') +
       kpi('Power saved', (sv >= 0 ? '' : '') + num(sv, 1) + ' <small>kW</small>', sv < 0 ? 'VFD losses exceed throttling loss here' : 'VFD trim vs throttle valve', sv > 0) +
       kpi('Annual saving', money(st.saveUsd), num(d.hours) + ' h × $' + d.tariff.toFixed(3) + '/kWh') +
-      kpi('CO₂ avoided', num(st.saveCo2, 1) + ' <small>t/yr</small>', 'at ' + b.ef.toFixed(2) + ' kg CO₂/kWh');
+      kpi('CO₂ avoided', num(st.saveCo2, 1) + ' <small>t/yr</small>', 'at ' + b.ef.toFixed(2) + ' kg CO₂/kWh'));
     $$('#hydReadouts small').forEach(function (s) { s.style.cssText = 'font-size:11px;color:#8E9196;font-weight:400'; });
 
     var vLim = 3.5, vBad = st.vDis > vLim;
@@ -570,93 +583,14 @@
     var rec = result.recommended, r = result.bids[rec];
     $('#heroRec').textContent = bidName(rec);
     $('#heroTcoLabel').textContent = state.duty.horizon + '-yr TCO';
-    $('#heroTco').textContent = money(r.tco);
-    $('#heroSave').textContent = rec === result.cheapest ? '$0' : money(r.savingsVsCheapest, true);
+    rollText($('#heroTco'), money(r.tco));
+    rollText($('#heroSave'), rec === result.cheapest ? '$0' : money(r.savingsVsCheapest, true));
     var m = r.npshMargin;
-    $('#heroNpsh').textContent = (m >= 0 ? '+' : '') + num(m, 1) + ' m';
+    rollText($('#heroNpsh'), (m >= 0 ? '+' : '') + num(m, 1) + ' m');
     var st = $('#heroNpshState');
     st.textContent = m >= 1 ? 'SAFE' : m >= 0 ? 'LOW' : 'RISK';
     st.className = 'state ' + (m >= 1 ? 'state--ok' : 'state--bad');
     heroChart.set(chartTarget(heroStudy));
-  }
-
-  function drawImpeller() {
-    var svg = $('#impeller');
-    var cx = 200, cy = 215, R2 = 150, R1 = 58, eye = 69, Rh = 34, Rb = 16;
-    var beta = 25 * Math.PI / 180, t = 7;
-    var P = function (r, th) { return (cx + r * Math.cos(th)).toFixed(2) + ' ' + (cy + r * Math.sin(th)).toFixed(2); };
-    var s = [];
-    var stoneL = '#C9CBCF', hair = '#5E6167', mut = '#8E9196';
-    s.push('<defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#4A4E56" stroke-width="1"/></pattern>' +
-      '<marker id="arr" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 8 4 0 7Z" fill="' + mut + '"/></marker></defs>');
-    // centre lines
-    s.push('<g stroke="' + hair + '" stroke-width=".8" stroke-dasharray="14 3 2 3">' +
-      '<line x1="30" y1="215" x2="370" y2="215"/><line x1="200" y1="45" x2="200" y2="385"/><line x1="430" y1="215" x2="636" y2="215"/></g>');
-    // outer shroud & eye
-    s.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + R2 + '" fill="#15171A" stroke="' + stoneL + '" stroke-width="1.2"/>');
-    s.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + (R2 - 6) + '" fill="none" stroke="' + hair + '" stroke-width=".7"/>');
-    // vanes (log spiral, constant blade angle β)
-    for (var k = 0; k < 6; k++) {
-      var th0 = 1.44 + k * Math.PI / 3, a = [], b = [];
-      for (var i = 0; i <= 28; i++) {
-        var r = R1 + (R2 - 6 - R1) * i / 28, th = th0 - Math.log(r / R1) / Math.tan(beta);
-        a.push(P(r, th)); b.push(P(r, th + t / r));
-      }
-      s.push('<path d="M' + a.join(' L') + ' L' + b.reverse().join(' L') + ' Z" fill="#202228" stroke="' + (k === 0 ? '#E04619' : stoneL) + '" stroke-width="' + (k === 0 ? 1.4 : .9) + '" stroke-linejoin="round"/>');
-    }
-    s.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + eye + '" fill="none" stroke="' + stoneL + '" stroke-width=".9" stroke-dasharray="4 3"/>');
-    s.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + Rh + '" fill="#15171A" stroke="' + stoneL + '" stroke-width="1.1"/>');
-    s.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + Rb + '" fill="#111214" stroke="' + stoneL + '" stroke-width="1"/>');
-    s.push('<rect x="' + (cx - 3.5) + '" y="' + (cy - Rb - 4) + '" width="7" height="6" fill="#111214" stroke="' + stoneL + '" stroke-width=".9"/>');
-    // balance holes
-    for (var j = 0; j < 6; j++) { var an = j * Math.PI / 3 + Math.PI / 6; s.push('<circle cx="' + (cx + 25 * Math.cos(an)).toFixed(1) + '" cy="' + (cy + 25 * Math.sin(an)).toFixed(1) + '" r="2.6" fill="none" stroke="' + mut + '" stroke-width=".8"/>'); }
-    // rotation arrow
-    var ra = function (deg) { var q = deg * Math.PI / 180; return (cx + 168 * Math.cos(q)).toFixed(1) + ' ' + (cy + 168 * Math.sin(q)).toFixed(1); };
-    s.push('<path d="M' + ra(150) + ' A168 168 0 0 1 ' + ra(118) + '" fill="none" stroke="' + mut + '" stroke-width="1" marker-end="url(#arr)"/>');
-    s.push('<text x="40" y="330" fill="' + mut + '" font-size="10.5">n · CCW</text>');
-
-    var T = function (x, y, txt, anchor, rot) {
-      return '<text x="' + x + '" y="' + y + '" fill="' + mut + '" font-size="10.5" text-anchor="' + (anchor || 'start') + '"' + (rot ? ' transform="rotate(-90 ' + x + ' ' + y + ')"' : '') + '>' + txt + '</text>';
-    };
-    var dim = '<g stroke="' + mut + '" stroke-width=".8" fill="none">';
-    // Ø D2 front view
-    dim += '<line x1="50" y1="40" x2="50" y2="210"/><line x1="350" y1="40" x2="350" y2="210"/>';
-    dim += '<line x1="50" y1="34" x2="350" y2="34" marker-start="url(#arr)" marker-end="url(#arr)"/>';
-    // eye leader
-    dim += '<path d="M' + (cx - 48.8).toFixed(1) + ' ' + (cy + 48.8).toFixed(1) + ' L104 298 H40"/>';
-    // β2 leader (outlet of highlighted vane)
-    var ox = cx + (R2 - 6) * Math.cos(1.44 - Math.log((R2 - 6) / R1) / Math.tan(beta)), oy = cy + (R2 - 6) * Math.sin(1.44 - Math.log((R2 - 6) / R1) / Math.tan(beta));
-    dim += '<path d="M' + ox.toFixed(1) + ' ' + oy.toFixed(1) + ' L372 ' + (oy - 34).toFixed(1) + ' H414" stroke="#E04619"/>';
-    s.push(T(200, 28, 'Ø365 D₂', 'middle'));
-    s.push(T(40, 292, 'Ø168 EYE'));
-    s.push('<text x="374" y="' + (oy - 40).toFixed(1) + '" fill="#E04619" font-size="10.5">β₂ 25°</text>');
-    s.push(T(212, 58, 'A') + T(212, 382, 'A'));
-
-    // Meridional section (upper half, mirrored)
-    var half = '<g>' +
-      '<path d="M537 65 L531 65 C525 104 497 134 470 140 L452 140 L452 146 L470 146 C503 140 531 108 537 65 Z" fill="url(#hatch)" stroke="' + stoneL + '" stroke-width="1"/>' +
-      '<path d="M560 65 L568 65 L568 181 L604 181 L604 199 L522 199 L522 186 C540 184 556 172 560 150 Z" fill="url(#hatch)" stroke="' + stoneL + '" stroke-width="1"/>' +
-      '<path d="M486 143 C505 160 518 174 526 186" fill="none" stroke="' + stoneL + '" stroke-width=".9"/>' +
-      '<path d="M537 65 L560 65" stroke="#E04619" stroke-width="1.4"/>' +
-      '<path d="M488 199 H632 V215 M488 199 V215" fill="none" stroke="' + hair + '" stroke-width=".9"/>' +
-      '</g>';
-    s.push(half);
-    s.push('<g transform="translate(0 430) scale(1 -1)">' + half + '</g>');
-    // section dimensions
-    dim += '<line x1="537" y1="62" x2="537" y2="44"/><line x1="560" y1="62" x2="560" y2="44"/>';
-    dim += '<line x1="520" y1="48" x2="537" y2="48" marker-end="url(#arr)"/><line x1="577" y1="48" x2="560" y2="48" marker-end="url(#arr)"/>';
-    dim += '<line x1="572" y1="65" x2="620" y2="65"/><line x1="610" y1="365" x2="620" y2="365"/>';
-    dim += '<line x1="614" y1="65" x2="614" y2="365" marker-start="url(#arr)" marker-end="url(#arr)"/>';
-    dim += '<line x1="449" y1="146" x2="434" y2="146"/><line x1="449" y1="284" x2="434" y2="284"/>';
-    dim += '<line x1="440" y1="146" x2="440" y2="284" marker-start="url(#arr)" marker-end="url(#arr)"/>';
-    dim += '</g>';
-    s.push(dim);
-    s.push(T(548, 38, 'b₂ 28', 'middle'));
-    s.push(T(630, 215, 'Ø365', 'middle', true));
-    s.push(T(431, 215, 'Ø168', 'middle', true));
-    s.push(T(200, 414, 'FRONT VIEW · SHROUD OMITTED', 'middle'));
-    s.push(T(533, 414, 'SECTION A–A', 'middle'));
-    svg.innerHTML = s.join('');
   }
 
   /* ================================================================
@@ -1263,12 +1197,12 @@
      ================================================================ */
   function renderRoi() {
     var r = E.fleetSavings(roi);
-    $('#roiOut').innerHTML =
-      '<div class="kpi kpi--lead"><span class="kpi__k">10-year energy cost avoided</span><span class="kpi__v">' + money(r.usd) + '</span><span class="kpi__s">at $' + roi.tariff.toFixed(3) + '/kWh, constant tariff, undiscounted</span></div>' +
-      '<div class="kpi"><span class="kpi__k">Energy avoided</span><span class="kpi__v">' + num(r.kWh / 1000, 0) + ' MWh</span></div>' +
-      '<div class="kpi"><span class="kpi__k">CO₂ avoided</span><span class="kpi__v">' + num(r.co2, 0) + ' t</span></div>' +
-      '<div class="kpi"><span class="kpi__k">Saving per pump</span><span class="kpi__v">' + num(r.kwPerPump, 2) + ' kW</span></div>' +
-      '<div class="kpi"><span class="kpi__k">Installed pump-years</span><span class="kpi__v">' + num(r.pumpYears) + '</span></div>';
+    rollRender($('#roiOut'),
+      '<div class="kpi kpi--lead"><span class="kpi__k">10-year energy cost avoided</span><span class="kpi__v" data-roll="10-year energy cost avoided">' + money(r.usd) + '</span><span class="kpi__s">at $' + roi.tariff.toFixed(3) + '/kWh, constant tariff, undiscounted</span></div>' +
+      '<div class="kpi"><span class="kpi__k">Energy avoided</span><span class="kpi__v" data-roll="Energy avoided">' + num(r.kWh / 1000, 0) + ' MWh</span></div>' +
+      '<div class="kpi"><span class="kpi__k">CO₂ avoided</span><span class="kpi__v" data-roll="CO₂ avoided">' + num(r.co2, 0) + ' t</span></div>' +
+      '<div class="kpi"><span class="kpi__k">Saving per pump</span><span class="kpi__v" data-roll="Saving per pump">' + num(r.kwPerPump, 2) + ' kW</span></div>' +
+      '<div class="kpi"><span class="kpi__k">Installed pump-years</span><span class="kpi__v" data-roll="Installed pump-years">' + num(r.pumpYears) + '</span></div>');
     $('#roiFormula').innerHTML = 'ΔP = P × (1 − η₀ / (η₀ + Δη)) = ' + num(roi.kw) + ' × (1 − ' + roi.baseEff + ' / ' + (roi.baseEff + roi.delta).toFixed(1) + ') = ' + num(r.kwPerPump, 2) + ' kW · pump-years = ' + num(roi.perYear) + ' × (1 + 2 + … + 10) = ' + num(r.pumpYears) + ' · savings = ΔP × ' + num(roi.hours) + ' h × pump-years × tariff';
   }
   function bindRoi() {
@@ -1303,7 +1237,7 @@
     terms: ['Terms of Service', '<p class="rep__meta mono">Effective 1 November 2026 · MYENG, Amman, Jordan and Jubail, Saudi Arabia</p>' +
       '<h3>1. The service</h3><p>MYENG provides engineering calculation and bid-evaluation tools for rotating equipment. The Sandbox is provided free of charge, as is, for evaluation and professional use.</p>' +
       '<h3>2. Engineering responsibility</h3><p>Results are calculated from the inputs you provide using the formulas documented in the Studio and in every audit report. They support, and do not replace, the judgement of a qualified engineer, vendor-certified performance data, witnessed testing, or your company\'s specifications. You remain responsible for decisions made using the outputs.</p>' +
-      '<h3>3. Sample data</h3><p>The preloaded case study uses illustrative figures. Vendor names are used only to frame a realistic example; the figures are not vendor-published data and imply no endorsement, comparison claim or affiliation.</p>' +
+      '<h3>3. Sample data</h3><p>The preloaded case study uses anonymised bidders and illustrative figures. They are not vendor-published data and refer to no real manufacturer.</p>' +
       '<h3>4. Your data and keys</h3><p>Browser sessions are not retained by MYENG. When you use your own Azure or Gemini key, you are responsible for complying with that provider\'s terms and for the content you submit.</p>' +
       '<h3>5. Acceptable use</h3><p>Do not attempt to disrupt the site, misrepresent outputs as vendor-certified, or use the service in breach of applicable law or confidentiality obligations.</p>' +
       '<h3>6. Liability</h3><p>To the extent permitted by law, MYENG is not liable for indirect or consequential loss arising from use of the free Sandbox. Paid plans are governed by their order form.</p>' +
@@ -1336,6 +1270,177 @@
     }
   }
 
+
+  /* ================================================================
+     Rolling tabular counters
+     ================================================================ */
+  var NUM_RE = /(\d[\d,]*(?:\.\d+)?)/;
+  var tweens = new WeakMap();
+  function splitNum(t) { return String(t).split(NUM_RE); }
+  function rollText(el, next) {
+    if (!el) return;
+    var prev = el.getAttribute('data-final');
+    if (prev == null) prev = el.textContent;
+    el.setAttribute('data-final', next);
+    if (prev === next) { if (!tweens.has(el)) el.textContent = next; return; }
+    var a = splitNum(prev), b = splitNum(next);
+    var same = !reduceMotion && a.length === b.length && a.length > 1 &&
+      a.every(function (x, i) { return i % 2 === 1 || x === b[i]; });
+    var old = tweens.get(el); if (old) cancelAnimationFrame(old.raf);
+    if (!same) { tweens.delete(el); el.textContent = next; return; }
+    var t0 = performance.now(), dur = 520;
+    var from = a.map(function (x, i) { return i % 2 ? parseFloat(x.replace(/,/g, '')) : x; });
+    var meta = b.map(function (x, i) {
+      if (!(i % 2)) return null;
+      var d = x.indexOf('.') >= 0 ? x.length - x.indexOf('.') - 1 : 0;
+      return { to: parseFloat(x.replace(/,/g, '')), d: d, comma: x.indexOf(',') >= 0 || parseFloat(x.replace(/,/g, '')) >= 1000 && /,/.test(prev) };
+    });
+    var tw = {};
+    (function step(now) {
+      var t = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - t, 3);
+      el.textContent = b.map(function (x, i) {
+        if (!(i % 2)) return x;
+        var m = meta[i], v = from[i] + (m.to - from[i]) * e;
+        return m.comma ? v.toLocaleString('en-US', { minimumFractionDigits: m.d, maximumFractionDigits: m.d }) : v.toFixed(m.d);
+      }).join('');
+      if (t < 1) tw.raf = requestAnimationFrame(step); else { el.textContent = next; tweens.delete(el); }
+    })(t0);
+    tweens.set(el, tw);
+  }
+  // Re-render a container but roll [data-roll] numbers from their previous values.
+  function rollRender(host, html) {
+    var prev = {};
+    $$('[data-roll]', host).forEach(function (el) { prev[el.getAttribute('data-roll')] = el.getAttribute('data-final') || el.textContent; });
+    host.innerHTML = html;
+    $$('[data-roll]', host).forEach(function (el) {
+      var k = el.getAttribute('data-roll'), next = el.textContent;
+      if (prev[k] != null) { el.textContent = prev[k]; el.setAttribute('data-final', prev[k]); rollText(el, next); }
+      else el.setAttribute('data-final', next);
+    });
+  }
+
+  /* ================================================================
+     Tactile tilt + specular sheen
+     ================================================================ */
+  function initTilt() {
+    if (reduceMotion || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    $$('.tilt').forEach(function (el) {
+      var cur = { rx: 0, ry: 0, sh: 0 }, tgt = { rx: 0, ry: 0, sh: 0 }, raf = 0, MAX = 2.5;
+      function loop() {
+        var k = 0.12, d = 0;
+        ['rx', 'ry', 'sh'].forEach(function (p) { cur[p] += (tgt[p] - cur[p]) * k; d = Math.max(d, Math.abs(tgt[p] - cur[p])); });
+        el.style.setProperty('--rx', cur.rx.toFixed(3) + 'deg');
+        el.style.setProperty('--ry', cur.ry.toFixed(3) + 'deg');
+        el.style.setProperty('--sheen', cur.sh.toFixed(3));
+        raf = d > 0.002 ? requestAnimationFrame(loop) : 0;
+      }
+      el.addEventListener('pointermove', function (e) {
+        var r = el.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+        tgt.ry = (x - 0.5) * 2 * MAX; tgt.rx = -(y - 0.5) * 2 * MAX; tgt.sh = 1;
+        el.style.setProperty('--mx', (x * 100).toFixed(1) + '%');
+        el.style.setProperty('--my', (y * 100).toFixed(1) + '%');
+        if (!raf) raf = requestAnimationFrame(loop);
+      });
+      el.addEventListener('pointerleave', function () { tgt.rx = 0; tgt.ry = 0; tgt.sh = 0; if (!raf) raf = requestAnimationFrame(loop); });
+    });
+  }
+
+  /* ================================================================
+     CFD-style streamline field (canvas)
+     Steady analytic flow: uniform stream + two counter-rotating cells,
+     a soft vortex at the pointer, speed scaled by the live flow rate.
+     ================================================================ */
+  function initFlowField() {
+    var cv = $('#flowfield'), host = $('#showcase');
+    if (!cv || !cv.getContext) return;
+    var ctx = cv.getContext('2d'), W = 0, H = 0, dpr = 1, parts = [], TRAIL = 30;
+    var mouse = { x: -1e4, y: -1e4, tx: -1e4, ty: -1e4, on: 0 }, running = false, visible = true, raf = 0, t = 0;
+    function resize() {
+      var r = host.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = r.width; H = r.height;
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var n = Math.round(Math.min(320, Math.max(90, W * H / 2600)));
+      parts = [];
+      for (var i = 0; i < n; i++) parts.push(spawn(true, i));
+    }
+    function spawn(anywhere, i) {
+      var p = { x: anywhere ? Math.random() * W : -10 - Math.random() * 60, y: Math.random() * H, h: [], life: 0, max: 220 + Math.random() * 260,
+        verm: (i != null ? i : Math.floor(Math.random() * 1000)) % 19 === 0, a: 0.12 + Math.random() * 0.18 };
+      return p;
+    }
+    function field(x, y) {
+      var u = 1, v = 0, sx = W || 1, sy = H || 1;
+      var k1 = Math.PI * 2 / sx, k2 = Math.PI / sy;
+      // stream function ψ = A sin(k1 x + t) sin(k2 y): divergence-free cells
+      var A = 0.55;
+      u += A * Math.sin(k1 * x * 1.3 + t * 0.15) * Math.cos(k2 * y * 2) * 1.2;
+      v += -A * Math.cos(k1 * x * 1.3 + t * 0.15) * Math.sin(k2 * y * 2) * 0.9;
+      v += 0.18 * Math.sin(x * 0.006 + y * 0.004 + t * 0.2);
+      if (mouse.on > 0.01) {
+        var dx = x - mouse.x, dy = y - mouse.y, r2 = dx * dx + dy * dy, R = 120;
+        var f = Math.exp(-r2 / (2 * R * R)) * 2.2 * mouse.on;
+        u += -dy / R * f + dx / R * f * 0.35; v += dx / R * f + dy / R * f * 0.35;
+      }
+      return [u, v];
+    }
+    function step(dt) {
+      var speed = 0.7 + 1.0 * (state.duty.Q / 420);
+      mouse.x += (mouse.tx - mouse.x) * 0.12; mouse.y += (mouse.ty - mouse.y) * 0.12;
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i], f = field(p.x, p.y);
+        p.x += f[0] * speed * dt; p.y += f[1] * speed * dt;
+        p.h.push(p.x, p.y);
+        if (p.h.length > TRAIL * 2) p.h.splice(0, 2);
+        p.life++;
+        if (p.x > W + 20 || p.y < -30 || p.y > H + 30 || p.x < -80 || p.life > p.max) parts[i] = spawn(false);
+      }
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.lineWidth = 0.7; ctx.lineCap = 'round';
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i], h = p.h;
+        if (h.length < 4) continue;
+        var fade = Math.min(1, p.life / 40, (p.max - p.life) / 40);
+        ctx.strokeStyle = p.verm ? 'rgba(224,70,25,' + (0.55 * fade).toFixed(3) + ')' : 'rgba(226,225,220,' + (p.a * fade).toFixed(3) + ')';
+        ctx.beginPath(); ctx.moveTo(h[0], h[1]);
+        for (var j = 2; j < h.length; j += 2) ctx.lineTo(h[j], h[j + 1]);
+        ctx.stroke();
+      }
+    }
+    var last = 0;
+    function frame(now) {
+      var dt = last ? Math.min(2.5, (now - last) / 16.67) : 1; last = now;
+      t += 0.016 * dt;
+      step(dt); draw();
+      raf = running ? requestAnimationFrame(frame) : 0;
+    }
+    function start() { if (running || reduceMotion) return; running = true; last = 0; raf = requestAnimationFrame(frame); }
+    function stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; }
+    resize();
+    if (reduceMotion) { for (var k = 0; k < 120; k++) step(1); draw(); return; }
+    host.addEventListener('pointermove', function (e) {
+      var r = host.getBoundingClientRect(); mouse.tx = e.clientX - r.left; mouse.ty = e.clientY - r.top;
+      if (mouse.on === 0) { mouse.x = mouse.tx; mouse.y = mouse.ty; } mouse.on = 1;
+    });
+    host.addEventListener('pointerleave', function () { mouse.on = 0; });
+    var ro = window.ResizeObserver ? new ResizeObserver(function () { resize(); }) : null;
+    if (ro) ro.observe(host); else window.addEventListener('resize', resize);
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (es) { visible = es[0].isIntersecting; if (visible && !doc.hidden) start(); else stop(); }).observe(host);
+    } else start();
+    doc.addEventListener('visibilitychange', function () { if (doc.hidden) stop(); else if (visible) start(); });
+  }
+
+  function initStagger() {
+    $$('[data-stagger]').forEach(function (g) {
+      Array.prototype.forEach.call(g.children, function (c, i) { c.classList.add('reveal'); c.style.setProperty('--d', (i * 0.09).toFixed(2) + 's'); });
+    });
+    $$('.sec-head').forEach(function (g) { $$('.reveal', g).forEach(function (c, i) { c.style.setProperty('--d', (i * 0.12).toFixed(2) + 's'); }); });
+  }
+
   /* ================================================================
      Init
      ================================================================ */
@@ -1343,7 +1448,6 @@
     $('#reqMaterial').innerHTML = E.MATERIAL_CLASSES.map(function (m) { return '<option>' + m + '</option>'; }).join('');
     $('#hydVendor').innerHTML = '<option value="rec">Recommended</option>' + [0, 1, 2].map(function (i) { return '<option value="' + i + '">Bid ' + 'ABC'[i] + '</option>'; }).join('');
     $('#year').textContent = new Date().getFullYear();
-    drawImpeller();
     initCharts();
     buildSliders();
     buildMatrix();
@@ -1363,7 +1467,10 @@
       b.addEventListener('click', function () { var l = LEGAL[b.getAttribute('data-legal')]; openModal(l[0], '<div class="rep">' + l[1] + '</div>'); });
     });
 
+    initStagger();
     observe();
+    initTilt();
+    initFlowField();
     requestAnimationFrame(function () { doc.documentElement.classList.add('is-ready'); doc.body.classList.add('is-ready'); });
     if (location.hash === '#studio') $('.studio__frame').classList.add('is-open');
   }
